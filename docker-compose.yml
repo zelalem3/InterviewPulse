@@ -14,20 +14,20 @@ services:
       - frontend
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     container_name: interviewpulse_backend
-    restart: unless-stopped
+    restart: always
+    ports:
+      - "8000:8000"   # <--- Add this line back!
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql://postgres:secret@postgres:5432/interviewpulse
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/interviewpulse
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - postgres
       - redis
-
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   frontend:
     build:
       context: ./frontend
@@ -45,9 +45,9 @@ services:
     container_name: interviewpulse_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: interviewpulse
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: interviewpulse
     ports:
       - "5432:5432"
     volumes:
