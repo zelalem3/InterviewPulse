@@ -18,16 +18,19 @@ services:
     container_name: interviewpulse_backend
     restart: always
     ports:
-      - "8000:8000"   # <--- Add this line back!
+      - "8000:8000"
     volumes:
       - ./backend:/app
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/interviewpulse
       - REDIS_URL=redis://redis:6379/0
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   frontend:
     build:
       context: ./frontend
@@ -38,7 +41,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "5173:5173"
 
   postgres:
     image: postgres:15-alpine
@@ -52,6 +55,11 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d interviewpulse"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   redis:
     image: redis:alpine
