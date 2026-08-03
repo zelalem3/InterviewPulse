@@ -7,7 +7,7 @@ from app.api.v1.interview import router as interview_router
 from app.api.v1.resume import router as resume_router
 from app.api.v1.question import router as question_router
 from app.api.v1.evaluations import router as evaluation_router
-from app.api.v1.answers import router as answer_router  # Already here
+from app.api.v1.answers import router as answer_router  
 
 app = FastAPI(title="InterviewPulse API", version="1.0.0")
 
@@ -16,7 +16,7 @@ app.include_router(interview_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
 app.include_router(question_router, prefix="/api")
 app.include_router(evaluation_router, prefix="/api")
-app.include_router(answer_router, prefix="/api")  # <--- ADD THIS LINE
+app.include_router(answer_router, prefix="/api") 
 
 app.add_middleware(
     CORSMiddleware,
