@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import NewInterview from './pages/NewInterview';
 import InterviewRoom from './pages/InterviewRoom';
 import Register from './pages/RegisterPage';
+import { CodeEditor } from './pages/CodeEditor';
 
 export default function App() {
   return (
@@ -16,6 +17,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/interview/new" element={<NewInterview />} />
         <Route path="/interview/:id" element={<InterviewRoom />} />
+        <Route path="/editor" element={<CodeEditor />} />
+
       </Routes>
     </BrowserRouter>
   );
