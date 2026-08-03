@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.orm import relationship
 from app.database.session import Base
 
@@ -21,6 +21,7 @@ class Resume(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     file_path = Column(String, nullable=False)
     parsed_content = Column(Text, nullable=True)
+    extracted_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="resumes")
@@ -33,7 +34,7 @@ class Interview(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
     job_role = Column(String, nullable=False)
-    status = Column(String, default="pending")  # pending, in_progress, completed
+    status = Column(String, default="pending")  
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="interviews")
