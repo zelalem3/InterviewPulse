@@ -50,3 +50,14 @@ async def list_user_interviews(
     # Fetch all interviews belonging to the logged-in user
     interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
     return interviews
+
+@router.get("/result/:id")
+async def get_result(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    interview = db.query(Interview).filter(Interview.id == id).first()
+    result = interview.result
+    return result
+
+
