@@ -4,7 +4,6 @@ import { LogIn, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 import { api as axios } from "../api/axios";
 import { useAuthStore } from '../store/authStore'; 
 
-
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,8 +11,13 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loginAction = useAuthStore((state) => state.login);
+  const logoutAction = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
-  
+
+  // Clear any existing stale or broken tokens when landing on the login page
+  useEffect(() => {
+    logoutAction();
+  }, [logoutAction]);
 
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,51 +25,39 @@ const Login = () => {
     setErrorMessage(null);
 
     try {
-      const response = await axios.post("/api/auth/login", {
+      const response = await axios.post("/auth/login", {
         email,
         password
       });
       
       console.log("login successful", response.data);
-      const { user, token } = response.data;
       
-      // Update global auth state
-      loginAction(user, token);
+      // Extract user and access_token from backend response payload
+      const { user, access_token } = response.data;
+      
+      // Update global auth state with the correct access token property
+      loginAction(user, access_token);
 
-      // Smoothly bounce user down onto home feed/dashboard
-      navigate("/");
+      // Navigate to dashboard
+      navigate('/', { replace: true });
 
     } catch (error: any) {
       if (error.response && error.response.status === 422) {
-          console.error("Laravel Validation Error Details:", error.response.data.errors);
-          // Extract and flatten validation errors from backend payload safely
           const messages = Object.values(error.response.data.errors).flat().join("\n");
           setErrorMessage(messages);
       } else {
-          console.error("Generic Login Failure:", error);
           setErrorMessage("Invalid credentials or server connection issue.");
       }
     } finally {
       setIsLoading(false);
     }
   }
-  
-  const token = useAuthStore((state) => state.token);
-  const isLoggedIn = !!token;
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isLoggedIn, navigate]);
-
-
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans selection:bg-slate-800 selection:text-white">
       <div className="max-w-md w-full bg-slate-900/60 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border border-slate-800/80 shadow-xl space-y-6">
         
-        {/* --- BRANDING / HEADER HEADER --- */}
+        {/* --- BRANDING / HEADER --- */}
         <div className="space-y-2 text-center">
           <div className="w-12 h-12 bg-slate-950 text-slate-300 rounded-2xl flex items-center justify-center mx-auto border border-slate-800 shadow-inner">
             <LogIn size={22} className="ml-0.5" />
