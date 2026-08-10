@@ -23,9 +23,7 @@ services:
       - ./backend:/app
     env_file:
       - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql://neondb_owner:npg_Kw8r2gzcNDsG@ep-weathered-field-ay1y1dza-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-      - REDIS_URL=redis://redis:6379/0
+    
     depends_on:
       postgres:
         condition: service_healthy
