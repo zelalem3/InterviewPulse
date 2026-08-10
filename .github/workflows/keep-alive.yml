@@ -3,6 +3,7 @@ name: Keep Server Alive
 on:
   schedule:
     - cron: '*/14 * * * *' # Runs every 14 minutes
+  workflow_dispatch: 
 
 jobs:
   ping:
