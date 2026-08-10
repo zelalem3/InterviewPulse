@@ -2,18 +2,24 @@ import Editor from '@monaco-editor/react';
 import React, { useRef, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/axios';
+import type { editor } from 'monaco-editor';
+
+interface Question {
+    id: string | number;
+    question_text: string;
+}
 
 export function CodeEditor() {
     const { interview_id } = useParams();
-    const [questions, setQuestions] = useState([]);
+    const [questions, setQuestions] = useState<Question[]>([]);
     
-    // Store editor references by question ID
-    const editorsRef = useRef({});
+    // Store editor references by question ID securely mapped
+    const editorsRef = useRef<Record<string | number, editor.IStandaloneCodeEditor>>({});
 
     useEffect(() => {
         async function fetchQuestions() {
             try {
-                const response = await api.get(`/code/${interview_id}`);
+                const response = await api.get<Question[]>(`/code/${interview_id}`);
                 setQuestions(response.data);
             } catch (error) {
                 console.error("Failed to fetch questions:", error);
@@ -25,7 +31,7 @@ export function CodeEditor() {
         }
     }, [interview_id]);
 
-    async function handleSubmit(questionId) {
+    async function handleSubmit(questionId: string | number) {
         const editorInstance = editorsRef.current[questionId];
         if (!editorInstance) return;
 
