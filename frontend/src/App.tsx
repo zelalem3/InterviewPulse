@@ -13,6 +13,7 @@ import { InterviewResult } from './pages/InterviewResult';
 import Navbar from './components/Navbar';
 import InterviewPage from './pages/InterviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import Settings from './pages/settings';
 
 function Layout() {
   return (
@@ -33,6 +34,7 @@ function Layout() {
           <Route path="/interview/history" element={<ProtectedRoute><InterviewHistory /></ProtectedRoute>} />
           <Route path="/interview/:id/result" element={<ProtectedRoute><InterviewResult /></ProtectedRoute>} />
           <Route path="/videointerivew" element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
           {/* --- 404 --- */}
           <Route path="*" element={<PageNotFound />} /> 
