@@ -24,5 +24,8 @@ ENV PYTHONUNBUFFERED=1
 # Copy application
 COPY . .
 
-# Start FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Create runtime audio directory and ensure model files are present/accounted for
+RUN mkdir -p audio models
+
+# Run database migrations and start FastAPI
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
