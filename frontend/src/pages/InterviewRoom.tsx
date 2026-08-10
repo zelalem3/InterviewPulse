@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api/axios';
+import LoadingSpinner from '../components/LoadinSpinner';
 
 interface Question {
   id: number;
@@ -32,6 +33,7 @@ export default function InterviewRoom() {
   const [answer, setAnswer] = useState<string>('');
   const [conversation, setConversation] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [result, setResult] = useState<FinalResult | null>(null);
 
   useEffect(() => {
@@ -40,13 +42,15 @@ export default function InterviewRoom() {
 
   const startInterview = async () => {
     try {
-      // Using axios client (token automatically attached by interceptor)
+      setInitialLoading(true);
       const res = await api.post(`/interviews/${interviewId}/start`);
       if (res.data?.question) {
         setCurrentQuestion(res.data.question);
       }
     } catch (err) {
       console.error("Failed to start interview:", err);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -56,14 +60,12 @@ export default function InterviewRoom() {
     setLoading(true);
 
     try {
-      // Using axios client
       const res = await api.post(`/interviews/questions/${currentQuestion.id}/answer`, {
         answer_text: answer
       });
 
       const data = res.data;
 
-      // Append to running conversational history transcript
       setConversation(prev => [
         ...prev,
         {
@@ -89,38 +91,42 @@ export default function InterviewRoom() {
     }
   };
 
+  if (initialLoading) {
+    return <LoadingSpinner message="Preparing your interview session..." />;
+  }
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Interactive Interview Room</h1>
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', color: '#000000' }}>
+      <h1 style={{ color: '#000000' }}>Interactive Interview Room</h1>
 
       {/* Transcript of previous turns */}
       {conversation.map((item, idx) => (
-        <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
-          <p><b>Q:</b> {item.question}</p>
-          <p><b>Your Answer:</b> {item.answer}</p>
-          <div style={{ marginTop: '8px', padding: '10px', background: '#e9f7ef', borderRadius: '6px', borderLeft: '4px solid #2ecc71' }}>
-            <p style={{ margin: '2px 0' }}><b>Score:</b> {item.score ?? "N/A"} / 10</p>
-            <p style={{ margin: '2px 0' }}><b>Feedback:</b> {item.feedback}</p>
+        <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', color: '#000000' }}>
+          <p style={{ color: '#000000' }}><b style={{ color: '#000000' }}>Q:</b> {item.question}</p>
+          <p style={{ color: '#000000' }}><b style={{ color: '#000000' }}>Your Answer:</b> {item.answer}</p>
+          <div style={{ marginTop: '8px', padding: '10px', background: '#e9f7ef', borderRadius: '6px', borderLeft: '4px solid #2ecc71', color: '#000000' }}>
+            <p style={{ margin: '2px 0', color: '#000000' }}><b style={{ color: '#000000' }}>Score:</b> {item.score ?? "N/A"} / 10</p>
+            <p style={{ margin: '2px 0', color: '#000000' }}><b style={{ color: '#000000' }}>Feedback:</b> {item.feedback}</p>
           </div>
         </div>
       ))}
 
       {/* Final Results View */}
       {result ? (
-        <div style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginTop: '20px' }}>
-          <h2>Interview Completed</h2>
-          <p>Overall Score: <b>{result.overall_score.toFixed(1)} / 10</b></p>
-          <p>Feedback Summary: {result.feedback_summary}</p>
+        <div style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginTop: '20px', color: '#000000' }}>
+          <h2 style={{ color: '#000000' }}>Interview Completed</h2>
+          <p style={{ color: '#000000' }}>Overall Score: <b style={{ color: '#000000' }}>{result.overall_score.toFixed(1)} / 10</b></p>
+          <p style={{ color: '#000000' }}>Feedback Summary: {result.feedback_summary}</p>
         </div>
       ) : currentQuestion ? (
         /* Active Prompt Interface */
-        <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid #3498db', borderRadius: '8px', background: '#fff' }}>
-          <h3>Current Question</h3>
-          <p style={{ fontSize: '1.1em', fontWeight: 'bold' }}>{currentQuestion.question_text}</p>
+        <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid #3498db', borderRadius: '8px', background: '#fff', color: '#000000' }}>
+          <h3 style={{ color: '#000000' }}>Current Question</h3>
+          <p style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#000000' }}>{currentQuestion.question_text}</p>
           
           <textarea
             rows={5}
-            style={{ width: '100%', marginBottom: '10px', padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
+            style={{ width: '100%', marginBottom: '10px', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', color: '#000000', background: '#fff' }}
             placeholder="Type your response here..."
             value={answer}
             onChange={e => setAnswer(e.target.value)}
@@ -138,7 +144,7 @@ export default function InterviewRoom() {
           </div>
         </div>
       ) : (
-        <p>Loading interview...</p>
+        <p style={{ color: '#000000' }}>Loading interview...</p>
       )}
     </div>
   );
