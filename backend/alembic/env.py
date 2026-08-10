@@ -15,8 +15,11 @@ from app.models.models import User, Resume, Interview, Question, Answer, Result
 config = context.config
 
 # Dynamically override sqlalchemy.url from environment variable if available
-database_url = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@postgres:5432/interviewpulse")
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    raise ValueError("DATABASE_URL environment variable is not set")
 config.set_main_option("sqlalchemy.url", database_url)
+
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
