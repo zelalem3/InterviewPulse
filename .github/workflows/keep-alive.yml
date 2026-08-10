@@ -3,7 +3,7 @@ name: Keep Server Alive
 on:
   schedule:
     - cron: '*/14 * * * *' # Runs every 14 minutes
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Send HTTP request to Render backend
         run: |
-          curl -I https://interviewpulse.onrender.com/api/health
+          curl -s -o /dev/null -w "%{http_code}" https://interviewpulse.onrender.com/api/health
