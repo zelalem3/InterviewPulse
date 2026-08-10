@@ -8,8 +8,19 @@ from app.api.v1.resume import router as resume_router
 from app.api.v1.question import router as question_router
 from app.api.v1.evaluations import router as evaluation_router
 from app.api.v1.answers import router as answer_router  
+from app.api.v1.Submissions import router as code_router
+from app.api.v1 import tts
+from fastapi.staticfiles import StaticFiles
+
+
+
 
 app = FastAPI(title="InterviewPulse API", version="1.0.0")
+app.mount(
+    "/audio",
+    StaticFiles(directory="audio"),
+    name="audio"
+)
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(interview_router, prefix="/api")
@@ -17,6 +28,11 @@ app.include_router(resume_router, prefix="/api")
 app.include_router(question_router, prefix="/api")
 app.include_router(evaluation_router, prefix="/api")
 app.include_router(answer_router, prefix="/api") 
+app.include_router(code_router, prefix="/api") 
+app.include_router(
+    tts.router,
+    prefix="/api"
+)
 
 app.add_middleware(
     CORSMiddleware,
