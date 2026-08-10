@@ -19,7 +19,7 @@ export default function Register() {
 
     try {
       // Adjusted endpoint and payload to align with standard Laravel / auth route structures
-      await api.post('/auth/register', {
+      await api.post('/auth/signup', {
         name: name,
         email: email,
         password: password,
