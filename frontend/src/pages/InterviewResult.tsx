@@ -2,16 +2,33 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api/axios";
 
+interface DetailedBreakdownItem {
+    question_type?: string;
+    index?: number;
+    critique?: string;
+}
+
+interface ParsedFeedback {
+    summary?: string;
+    categories?: Record<string, number | string>;
+    detailed_breakdown?: DetailedBreakdownItem[];
+}
+
+interface InterviewResultData {
+    feedback_summary?: string;
+    overall_score?: number | string;
+    [key: string]: unknown;
+}
+
 export function InterviewResult() {
     const { id } = useParams(); 
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<InterviewResultData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchResult() {
             try {
-                // Changed from api.get to api.post to match the FastAPI route decorator
                 const response = await api.post(`/interviews/${id}/evaluate`);
                 setResult(response.data);
             } catch (e) {
@@ -31,14 +48,12 @@ export function InterviewResult() {
     if (error) return <div style={{ padding: '20px', color: '#ff6b6b' }}>{error}</div>;
     if (!result) return <div style={{ padding: '20px', color: '#fff' }}>No result found.</div>;
 
-    // Safely parse the rich feedback JSON payload stored in feedback_summary
-    let parsedFeedback = { summary: result.feedback_summary, categories: {}, detailed_breakdown: [] };
+    let parsedFeedback: ParsedFeedback = { summary: result.feedback_summary, categories: {}, detailed_breakdown: [] };
     try {
         if (result.feedback_summary) {
             parsedFeedback = JSON.parse(result.feedback_summary);
         }
-    } catch (err) {
-        // Fallback if it's plain text string
+    } catch {
         parsedFeedback.summary = result.feedback_summary;
     }
 
@@ -47,7 +62,7 @@ export function InterviewResult() {
             <h1 style={{ borderBottom: '2px solid #444', paddingBottom: '10px' }}>Interview Evaluation Report</h1>
             
             <div style={{ margin: '20px 0', padding: '15px', background: '#252526', borderRadius: '6px' }}>
-                <h2>Overall Score: <span style={{ color: '#4CAF50' }}>{result.overall_score} / 10</span></h2>
+                <h2>Overall Score: <span style={{ color: '#4CAF50' }}>{result.overall_score ?? 'N/A'} / 10</span></h2>
             </div>
 
             {parsedFeedback.categories && Object.keys(parsedFeedback.categories).length > 0 && (
@@ -59,7 +74,7 @@ export function InterviewResult() {
                                 <span style={{ textTransform: 'capitalize', display: 'block', fontSize: '0.9rem', color: '#aaa' }}>
                                     {category.replace('_', ' ')}
                                 </span>
-                                <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{score} / 10</strong>
+                                <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{String(score)} / 10</strong>
                             </div>
                         ))}
                     </div>
