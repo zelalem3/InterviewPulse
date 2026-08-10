@@ -128,7 +128,7 @@ export function InterviewHistory() {
                 </div>
 
                 <button 
-                  onClick={() => navigate(`/interview/${interview.id}`)}
+                  onClick={() => navigate(`/interview/${interview.id}/result`)}
                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600 shrink-0"
                 >
                   <span>View Diagnostic Report</span>
