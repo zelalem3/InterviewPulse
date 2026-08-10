@@ -36,7 +36,7 @@ app.include_router(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost"],
+    allow_origins=["http://localhost:5173", "http://localhost","https://interview-pulse-five.vercel.app",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
