@@ -1,129 +1,323 @@
 # InterviewPulse
 
-> **AI-powered mock interview platform for practicing technical and behavioral interviews with real-time voice interaction, adaptive follow-up questions, and automated feedback.**
+> **AI-powered mock interview platform with adaptive text and video interview modes, contextual follow-up questions, and automated performance evaluation.**
 
-InterviewPulse is a full-stack AI interview platform designed to simulate realistic technical interviews. Instead of simply presenting a fixed list of questions, InterviewPulse maintains the state of an interview, listens to the candidate's answers, generates contextual follow-up questions, and evaluates the candidate's performance.
+InterviewPulse is a full-stack AI interview platform designed to simulate realistic technical and behavioral interviews.
 
-The goal is to provide developers and job seekers with a realistic environment where they can practice interviewing without needing a human interviewer.
+Candidates can choose between **Text Interview** and **Video Interview** depending on how they want to practice.
+
+The platform maintains interview context, analyzes candidate answers, generates contextual follow-up questions, and provides detailed feedback at the end of the interview.
 
 ---
 
 ## ✨ Features
 
-### 🎤 Conversational AI Interviews
+### 💬 Text Interview
 
-* AI interviewer asks interview questions using voice.
-* Candidate answers using their microphone.
-* Speech is converted into text.
-* AI analyzes the candidate's answer.
+Practice interviews through a conversational text-based interface.
+
+* AI interviewer asks questions through text.
+* Candidate responds by typing.
+* Answers are analyzed by the AI.
 * Follow-up questions can be generated based on previous answers.
-* Interview state is maintained throughout the session.
+* Interview context is maintained throughout the session.
+* Final performance evaluation is provided at the end.
 
-### 🧠 Adaptive Follow-Up Questions
+Example:
 
-Unlike traditional mock interview applications that use predetermined questions, InterviewPulse can dynamically continue the conversation.
+```text
+AI Interviewer:
+Explain the difference between a process and a thread.
+
+Candidate:
+A process is an independent program with its own memory space,
+while threads share memory within the same process.
+
+AI Interviewer:
+Good. What advantages do threads have over processes?
+```
+
+---
+
+### 🎥 Video Interview
+
+Practice in an environment closer to a real interview.
+
+* Camera support
+* Microphone support
+* AI interviewer
+* Spoken questions
+* Candidate video/audio interaction
+* Speech-to-text transcription
+* Text-to-speech
+* Interview timer
+* Contextual follow-up questions
+* Automated evaluation
+
+The video mode is designed to help candidates practice not only their technical knowledge, but also their ability to communicate under realistic interview conditions.
+
+---
+
+## 🧠 Adaptive AI Interviewer
+
+InterviewPulse is designed to go beyond a fixed list of questions.
+
+Instead of:
+
+```text
+Question 1
+    ↓
+Question 2
+    ↓
+Question 3
+    ↓
+Question 4
+```
+
+InterviewPulse maintains the conversation:
+
+```text
+Question
+    ↓
+Candidate Answer
+    ↓
+AI analyzes answer
+    ↓
+┌─────────────────────┐
+│ Continue topic      │
+│ Ask follow-up       │
+│ Move to new topic   │
+└──────────┬──────────┘
+           ↓
+     Next Question
+           ↓
+      Candidate Answer
+           ↓
+      ...
+```
+
+This allows the interviewer to ask questions based on what the candidate actually said.
 
 For example:
 
 ```text
-AI: Explain how database indexing works.
+AI:
+What is database indexing?
 
 Candidate:
-An index improves query performance by allowing the database
-to find rows without scanning the entire table.
+An index helps the database find records faster.
 
 AI:
-Good. What are some disadvantages of adding too many indexes?
+What are some disadvantages of using too many indexes?
 ```
 
-The next question can depend on what the candidate previously said.
+The follow-up question is related to the candidate's previous answer rather than simply being the next question in a predefined list.
 
-### 📹 Video Interview Experience
+---
 
-InterviewPulse is designed around a realistic interview environment:
+# 🎤 Two Interview Modes
 
-* Camera support
-* Microphone support
-* Live interview interface
-* Interview timer
-* Question display
-* Candidate response recording
-* Interview state management
+InterviewPulse provides two ways to conduct an interview.
 
-### 🔊 Text-to-Speech
+| Feature             | Text Interview | Video Interview |
+| ------------------- | :------------: | :-------------: |
+| Text questions      |        ✅       |        ✅        |
+| Typed answers       |        ✅       |        ❌        |
+| Camera              |        ❌       |        ✅        |
+| Microphone          |        ❌       |        ✅        |
+| Speech-to-text      |        ❌       |        ✅        |
+| Text-to-speech      |        ❌       |        ✅        |
+| Interview timer     |        ✅       |        ✅        |
+| Follow-up questions |        ✅       |        ✅        |
+| AI evaluation       |        ✅       |        ✅        |
+| Interview feedback  |        ✅       |        ✅        |
 
-The AI interviewer can speak questions aloud, creating a more natural interview experience.
+Both modes use the same underlying interview engine and evaluation system.
 
-### 📝 Speech-to-Text
+---
 
-Candidate responses can be transcribed from microphone input so that they can be analyzed by the evaluation system.
+# 📹 Video Interview Flow
 
-### 📊 Automated Evaluation
+```text
+             Start Interview
+                    │
+                    ▼
+          Select Video Interview
+                    │
+                    ▼
+          Camera + Microphone
+                    │
+                    ▼
+            AI asks question
+                    │
+                    ▼
+            Candidate speaks
+                    │
+                    ▼
+            Speech-to-Text
+                    │
+                    ▼
+            Answer Analysis
+                    │
+                    ▼
+        Generate Next Question
+                    │
+                    ▼
+              Continue
+                    │
+                    ▼
+          Final Evaluation
+```
 
-After answering questions, candidates receive feedback including:
+---
+
+# 💬 Text Interview Flow
+
+```text
+             Start Interview
+                    │
+                    ▼
+           Select Text Interview
+                    │
+                    ▼
+            AI asks question
+                    │
+                    ▼
+            Candidate types
+                    │
+                    ▼
+            Answer Analysis
+                    │
+                    ▼
+        Generate Next Question
+                    │
+                    ▼
+              Continue
+                    │
+                    ▼
+          Final Evaluation
+```
+
+---
+
+# 📊 Automated Evaluation
+
+After the interview, InterviewPulse evaluates the candidate's performance.
+
+Evaluation can include:
 
 * Overall score
-* Answer score
+* Individual answer scores
+* Technical accuracy
+* Depth of understanding
+* Communication quality
 * Strengths
 * Weaknesses
 * Feedback summary
 * Suggested improvements
-* Model/reference answer
+* Model/reference answers
 
-### 🔐 Authentication
+Example:
 
-InterviewPulse supports authenticated users so interview history and evaluation results can be associated with individual accounts.
+```json
+{
+  "overall_score": 78,
+  "feedback_summary": "Good understanding of the topic, but the explanation could be more detailed.",
+  "answers": [
+    {
+      "score": 82,
+      "feedback": "Correct explanation with a good understanding of the fundamentals."
+    }
+  ]
+}
+```
 
-### 🗄️ Persistent Interview Data
+The goal is not simply to give candidates a score, but to explain **why** they received that score and how they can improve.
 
-Interview sessions can store information such as:
+---
 
-* Interview
-* Questions
-* Candidate answers
-* Follow-up questions
-* Scores
-* Feedback
-* Interview results
+# 🧩 Interview Types
+
+InterviewPulse is designed to support different types of interviews.
+
+Potential interview categories include:
+
+* 💻 Technical Interviews
+* 🧠 Behavioral Interviews
+* 🏗️ System Design Interviews
+* 🗄️ Database Interviews
+* 🌐 Backend Interviews
+* ⚛️ Frontend Interviews
+* 🔧 Full-Stack Interviews
+* 🐍 Python Interviews
+* 🟢 Node.js Interviews
+* ☕ General Software Engineering Interviews
+
+The interview mode and interview type can be selected independently.
+
+For example:
+
+```text
+Technical Interview
+        +
+Video Mode
+```
+
+or:
+
+```text
+Backend Interview
+        +
+Text Mode
+```
 
 ---
 
 # 🏗️ Architecture
 
-InterviewPulse follows a client-server architecture:
+InterviewPulse follows a client-server architecture.
 
 ```text
-┌──────────────────────────┐
-│        React Client      │
-│                          │
-│  Interview UI            │
-│  Camera / Microphone     │
-│  Speech Recognition      │
-│  Audio Playback          │
-└────────────┬─────────────┘
-             │
-             │ HTTP / REST API
-             ▼
-┌──────────────────────────┐
-│      Python Backend      │
-│                          │
-│  Authentication          │
-│  Interview Management    │
-│  Conversation State      │
-│  AI Evaluation           │
-│  Follow-up Generation    │
-└────────────┬─────────────┘
-             │
-       ┌─────┴─────┐
-       ▼           ▼
-┌───────────┐ ┌─────────────┐
-│ PostgreSQL│ │ AI Provider │
-│           │ │             │
-│ Users     │ │ Generation  │
-│ Interviews│ │ Evaluation  │
-│ Answers   │ │ Follow-ups  │
-│ Feedback  │ │             │
-└───────────┘ └─────────────┘
+┌─────────────────────────────────────┐
+│             React Client            │
+│                                     │
+│  ┌─────────────┐  ┌─────────────┐  │
+│  │ Text Mode   │  │ Video Mode  │  │
+│  │             │  │             │  │
+│  │ Chat UI     │  │ Camera      │  │
+│  │ Text Input  │  │ Microphone  │  │
+│  └──────┬──────┘  └──────┬──────┘  │
+│         │                │         │
+└─────────┼────────────────┼─────────┘
+          │                │
+          └───────┬────────┘
+                  │
+             REST API
+                  │
+                  ▼
+┌─────────────────────────────────────┐
+│          Python Backend             │
+│                                     │
+│  Authentication                     │
+│  Interview Management               │
+│  Interview State                    │
+│  Question Generation                │
+│  Follow-up Generation               │
+│  Answer Evaluation                  │
+│  Results                            │
+└────────────────┬────────────────────┘
+                 │
+          ┌──────┴──────┐
+          ▼             ▼
+┌────────────────┐ ┌─────────────────┐
+│   PostgreSQL   │ │   AI Provider   │
+│                │ │                 │
+│ Users          │ │ Questions       │
+│ Interviews     │ │ Follow-ups      │
+│ Questions      │ │ Evaluation      │
+│ Answers        │ │ Feedback        │
+│ Results        │ │                 │
+└────────────────┘ └─────────────────┘
 ```
 
 ---
@@ -135,10 +329,10 @@ InterviewPulse follows a client-server architecture:
 * React
 * TypeScript
 * Vite
-* CSS / Tailwind CSS
+* Tailwind CSS
+* Axios
 * Web Speech APIs
 * MediaDevices API
-* Axios
 
 ## Backend
 
@@ -154,23 +348,24 @@ InterviewPulse follows a client-server architecture:
 
 ## AI
 
-InterviewPulse is designed to work with an LLM provider for:
+The AI layer is responsible for:
 
-* Question generation
+* Interview question generation
 * Follow-up question generation
-* Answer evaluation
+* Answer analysis
+* Candidate evaluation
 * Feedback generation
 * Interview summaries
 
-The AI layer is abstracted so that the underlying model can be changed without rewriting the interview system.
+The AI integration is separated from the core interview logic so the underlying model can be changed without redesigning the entire platform.
 
-## Development / Infrastructure
+## Infrastructure
 
 * Docker
 * Docker Compose
-* Git
 * PostgreSQL
-* Alembic migrations
+* Alembic
+* Git
 
 ---
 
@@ -194,8 +389,7 @@ InterviewPulse/
 │   │   └── env.py
 │   │
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── ...
+│   └── Dockerfile
 │
 ├── frontend/
 │   ├── src/
@@ -207,8 +401,7 @@ InterviewPulse/
 │   │   └── ...
 │   │
 │   ├── package.json
-│   ├── vite.config.ts
-│   └── ...
+│   └── vite.config.ts
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -221,7 +414,7 @@ InterviewPulse/
 
 ## Prerequisites
 
-Make sure you have the following installed:
+Make sure you have:
 
 * Git
 * Docker
@@ -231,7 +424,7 @@ Make sure you have the following installed:
 
 ---
 
-## 1. Clone the repository
+## Clone the Repository
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/InterviewPulse.git
@@ -241,9 +434,7 @@ cd InterviewPulse
 
 ---
 
-## 2. Configure environment variables
-
-Create your environment file:
+## Configure Environment Variables
 
 ```bash
 cp .env.example .env
@@ -259,7 +450,7 @@ SECRET_KEY=your-secret-key
 AI_API_KEY=your-api-key
 ```
 
-> Never commit `.env` or API keys to Git.
+Never commit `.env` or API keys to the repository.
 
 ---
 
@@ -271,7 +462,7 @@ Build and start the application:
 docker compose up --build
 ```
 
-Run in detached mode:
+Run in the background:
 
 ```bash
 docker compose up -d
@@ -289,205 +480,23 @@ docker compose down
 
 InterviewPulse uses **Alembic** for database migrations.
 
-Create a migration:
-
-```bash
-docker compose exec backend alembic revision --autogenerate -m "describe change"
-```
-
 Apply migrations:
 
 ```bash
 docker compose exec backend alembic upgrade head
 ```
 
-Check migration status:
+Create a new migration:
+
+```bash
+docker compose exec backend alembic revision --autogenerate -m "describe change"
+```
+
+Check the current migration:
 
 ```bash
 docker compose exec backend alembic current
 ```
-
----
-
-# 🖥️ Running Without Docker
-
-## Backend
-
-Navigate to the backend:
-
-```bash
-cd backend
-```
-
-Create a virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Activate it:
-
-### Linux/macOS
-
-```bash
-source venv/bin/activate
-```
-
-### Windows
-
-```powershell
-venv\Scripts\activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the server:
-
-```bash
-uvicorn app.main:app --reload
-```
-
----
-
-## Frontend
-
-Navigate to the frontend:
-
-```bash
-cd frontend
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
----
-
-# 🔄 Interview Flow
-
-A typical InterviewPulse session works like this:
-
-```text
-                Start Interview
-                       │
-                       ▼
-              Select Interview Type
-                       │
-                       ▼
-                AI asks Question
-                       │
-                       ▼
-              Text-to-Speech
-                       │
-                       ▼
-             Candidate Responds
-                       │
-                       ▼
-              Speech-to-Text
-                       │
-                       ▼
-               Answer Analysis
-                       │
-                 ┌─────┴─────┐
-                 │           │
-              Follow-up   Next Question
-                 │           │
-                 └─────┬─────┘
-                       ▼
-                Continue Interview
-                       │
-                       ▼
-                 Final Evaluation
-                       │
-                       ▼
-                Results Dashboard
-```
-
----
-
-# 🧠 Stateful Interview Engine
-
-One of the main goals of InterviewPulse is to avoid treating every question as an isolated interaction.
-
-The backend maintains interview context such as:
-
-```text
-Interview
-│
-├── Question 1
-│   └── Answer
-│
-├── Question 2
-│   └── Answer
-│
-├── Follow-up Question
-│   └── Answer
-│
-├── Question 3
-│   └── Answer
-│
-└── Final Evaluation
-```
-
-This allows the AI interviewer to consider previous answers when generating subsequent questions.
-
----
-
-# 📊 Evaluation
-
-Candidate answers can be evaluated using multiple dimensions.
-
-Example:
-
-```json
-{
-  "overall_score": 78,
-  "technical_accuracy": 82,
-  "communication": 75,
-  "depth": 76,
-  "feedback_summary": "Good understanding of the topic, but the explanation could be more detailed."
-}
-```
-
-The system can then present the results in a user-friendly dashboard.
-
----
-
-# 🔌 API
-
-The backend exposes REST endpoints for authentication and interview management.
-
-Example endpoints:
-
-```text
-POST   /api/auth/register
-POST   /api/auth/login
-
-GET    /api/interviews
-POST   /api/interviews
-
-GET    /api/interviews/{id}
-POST   /api/interviews/{id}/answers
-
-POST   /api/interviews/{id}/follow-up
-POST   /api/interviews/{id}/evaluate
-
-GET    /api/interviews/{id}/results
-```
-
-> Endpoint names may change as the application evolves.
 
 ---
 
@@ -513,26 +522,19 @@ npm run build
 
 ---
 
-# 🔒 Security Considerations
+# 🔐 Security
 
-InterviewPulse is designed with basic application security practices in mind:
+InterviewPulse follows common application security practices:
 
-* Passwords are hashed before storage.
-* Authentication tokens are used for protected resources.
-* Secrets are stored in environment variables.
-* API keys are never committed to source control.
-* Database access is handled through SQLAlchemy.
-* Input validation is handled using Pydantic schemas.
+* Password hashing
+* Protected API endpoints
+* Environment-based secrets
+* Input validation
+* Database-level constraints
+* CORS configuration
+* Authentication and authorization
 
-For production deployments, additional protections should be added, including:
-
-* HTTPS
-* Rate limiting
-* Secure cookie/token configuration
-* CORS restrictions
-* Request validation
-* Production secret management
-* Database backups
+For production deployments, additional security measures such as HTTPS, rate limiting, secure token configuration, monitoring, and secret management should be added.
 
 ---
 
@@ -542,28 +544,35 @@ For production deployments, additional protections should be added, including:
 
 * [x] Project setup
 * [x] Authentication
-* [x] Database models
+* [x] PostgreSQL database
+* [x] Database migrations
 * [x] Interview sessions
-* [x] Basic interview UI
+* [x] Interview questions
+* [x] Candidate answers
 
-### Phase 2 — AI Interviewer
+### Phase 2 — Text Interviews
 
-* [x] AI-generated questions
-* [x] Answer evaluation
-* [x] Feedback generation
-* [x] Follow-up question logic
+* [x] Text interview interface
+* [x] AI questions
+* [x] Answer submission
+* [x] Context-aware follow-ups
+* [x] AI evaluation
+* [x] Feedback
 
-### Phase 3 — Voice Interview
+### Phase 3 — Video Interviews
 
+* [x] Camera integration
 * [x] Microphone integration
 * [x] Speech recognition
 * [x] Text-to-speech
 * [x] Interview timer
+* [x] Spoken AI questions
+* [x] Spoken candidate answers
 
 ### Phase 4 — Advanced Interviews
 
 * [ ] Better conversational memory
-* [ ] Interview difficulty adjustment
+* [ ] Dynamic interview difficulty
 * [ ] Topic-specific interviews
 * [ ] Behavioral interview mode
 * [ ] System-design interview mode
@@ -573,14 +582,15 @@ For production deployments, additional protections should be added, including:
 
 * [ ] Interview history
 * [ ] Performance trends
-* [ ] Skill-level analysis
+* [ ] Skill analysis
 * [ ] Weak-topic detection
-* [ ] Personalized practice recommendations
+* [ ] Personalized recommendations
+* [ ] Progress tracking
 
 ### Phase 6 — Production
 
-* [ ] Production deployment
 * [ ] CI/CD
+* [ ] Production deployment
 * [ ] Automated testing pipeline
 * [ ] Monitoring
 * [ ] Error tracking
@@ -590,13 +600,47 @@ For production deployments, additional protections should be added, including:
 
 # 🎯 Project Goals
 
-InterviewPulse aims to make interview preparation:
+InterviewPulse aims to make interview preparation more accessible and realistic.
 
-* **Accessible** — practice without needing an interviewer.
-* **Interactive** — have an actual conversation instead of answering static questions.
-* **Adaptive** — questions should respond to previous answers.
-* **Measurable** — track performance over time.
-* **Practical** — simulate the pressure and flow of a real interview.
+### Practice your way
+
+Candidates can choose:
+
+**Text Mode**
+
+> Best for focused practice and quickly going through multiple questions.
+
+**Video Mode**
+
+> Best for simulating a real interview and practicing verbal communication.
+
+### Practice → Analyze → Improve
+
+```text
+              ┌──────────────┐
+              │    Practice  │
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │   Interview  │
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │   Evaluate   │
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │   Feedback   │
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │    Improve   │
+              └──────────────┘
+```
 
 ---
 
@@ -604,26 +648,25 @@ InterviewPulse aims to make interview preparation:
 
 Contributions are welcome.
 
-1. Fork the repository.
-2. Create a feature branch.
+Create a feature branch:
 
 ```bash
 git checkout -b feature/my-feature
 ```
 
-3. Commit your changes.
+Commit your changes:
 
 ```bash
 git commit -m "feat: add interview analytics"
 ```
 
-4. Push the branch.
+Push the branch:
 
 ```bash
 git push origin feature/my-feature
 ```
 
-5. Open a Pull Request.
+Then open a Pull Request.
 
 ---
 
@@ -631,17 +674,15 @@ git push origin feature/my-feature
 
 This project is currently intended for educational and portfolio purposes.
 
-Add a license here if the project is later released under an open-source license.
-
 ---
 
 # 👨‍💻 Author
 
 **Zelalem Getnet**
 
-Computer Science Graduate | Full-Stack Developer
+Computer Science Graduate & Full-Stack Developer
 
-Focused on:
+Interested in:
 
 * Backend Engineering
 * Python
@@ -650,34 +691,14 @@ Focused on:
 * React
 * PostgreSQL
 * AI-powered applications
-* Software architecture
+* Software Architecture
 
 ---
 
-## ⭐ Why InterviewPulse?
+## ⭐ InterviewPulse
 
-Most mock interview applications follow a simple pattern:
+InterviewPulse combines **AI, conversational interviews, and full-stack engineering** to create a more realistic way to prepare for technical and behavioral interviews.
 
-```text
-Question → Answer → Score
-```
+Whether you prefer typing your answers or practicing face-to-face with a camera and microphone:
 
-InterviewPulse is designed around:
-
-```text
-Question
-   ↓
-Answer
-   ↓
-Understand the answer
-   ↓
-Generate contextual follow-up
-   ↓
-Continue the conversation
-   ↓
-Evaluate the complete interview
-   ↓
-Provide actionable feedback
-```
-
-**InterviewPulse is not just a question-and-answer application. It is an attempt to build a conversational interview experience.**
+**Choose your mode. Start the interview. Get feedback. Improve.**
