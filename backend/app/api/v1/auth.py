@@ -36,17 +36,26 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", tags=["Authentication"])
-async def login(credentials: UserLogin, db: Session = Depends(get_db)):
+async def login(
+    credentials: UserLogin,
+    db: Session = Depends(get_db)
+):
     # Find user by email
-    user = db.query(User).filter(User.email == credentials.email).first()
+    user = db.query(User).filter(
+        User.email == credentials.email
+    ).first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Credentials"
         )
 
-    # Verify password against database hash using credentials instance
-    if not verify_hash(credentials.password, user.hashed_password):
+    # Verify password
+    if not verify_hash(
+        credentials.password,
+        user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Credentials"
@@ -55,11 +64,17 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     # Generate JWT token
     payload = {
         "user_id": user.id,
-        "exp": datetime.utcnow() + timedelta(minutes=120)  
+        "exp": datetime.utcnow() + timedelta(minutes=120)
     }
+
     token = generate_token(payload)
 
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+           
+            "email": user.email,
+        }
     }
