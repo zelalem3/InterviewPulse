@@ -120,7 +120,7 @@ def generate_comprehensive_evaluation(interview_data: list, coding_data: list, p
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     
     # Using a fast, active model configuration
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.6-flash")
     
     prompt = f"""
     You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
