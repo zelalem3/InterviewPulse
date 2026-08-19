@@ -1,8 +1,10 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.database.session import get_db
 from app.models.models import User, Interview, Question, Answer, Result, CodingQuestion, CodingAnswer
@@ -25,7 +27,7 @@ async def evaluate_interview(
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found")
 
-    # 2. Gather standard verbal/theory questions and answers efficiently (Batch Lookup)
+    # 2. Gather standard verbal/theory questions and answers efficiently
     questions = db.query(Question).filter(Question.interview_id == interview.id).all()
     question_ids = [q.id for q in questions]
     
@@ -44,7 +46,7 @@ async def evaluate_interview(
         for q in questions
     ]
 
-    # 3. Gather coding challenges and submitted code efficiently (Batch Lookup)
+    # 3. Gather coding challenges and submitted code efficiently
     coding_questions = db.query(CodingQuestion).filter(CodingQuestion.interview_id == interview.id).all()
     cq_ids = [cq.id for cq in coding_questions]
     
@@ -69,8 +71,13 @@ async def evaluate_interview(
     latest_resume = current_user.resumes[-1] if current_user.resumes else None
     resume_data = latest_resume.extracted_data if latest_resume else "No resume data available"
 
-    # 5. Call Gemini AI Evaluation
-    ai_evaluation_raw = generate_comprehensive_evaluation(interview_data, coding_data, resume_data)
+    # 5. Call Gemini AI Evaluation using threadpool to prevent blocking FastAPI
+    ai_evaluation_raw = await run_in_threadpool(
+        generate_comprehensive_evaluation, 
+        interview_data, 
+        coding_data, 
+        resume_data
+    )
     
     try:
         eval_data = json.loads(ai_evaluation_raw)
@@ -117,10 +124,7 @@ async def evaluate_interview(
 
 
 def generate_comprehensive_evaluation(interview_data: list, coding_data: list, parsed_text: str):
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    
-    # Using a fast, active model configuration
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    client = genai.Client()
     
     prompt = f"""
     You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
@@ -167,9 +171,12 @@ def generate_comprehensive_evaluation(interview_data: list, coding_data: list, p
     }}
     """
     
-    response = model.generate_content(
-        prompt,
-        generation_config={"response_mime_type": "application/json"}
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json"
+        ),
     )
     
     return response.text
