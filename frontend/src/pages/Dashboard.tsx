@@ -228,13 +228,27 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => navigate(`/interview/${item.id}`)}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
-                >
-                  <span>View Details</span>
-                  <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                {item.status && item.status.toLowerCase().includes('completed') ? (
+  <div>
+    <button 
+      onClick={() => navigate(`/interview/${item.id}/result`)}
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
+    >
+      <span>View Diagnostic Report</span>
+      <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+    </button>
+  </div>
+) : (
+  <div>
+    <button 
+      onClick={() => navigate(`/interview/${item.id}`)}
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
+    >
+      <span>Resume Interview Node</span>
+      <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+    </button>
+  </div>
+)}
               </div>
             ))}
           </div>
