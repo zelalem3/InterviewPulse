@@ -37,22 +37,45 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/interviews/'),
-      api.get('/interviews/stats/summary')
-    ])
-      .then(([interviewsRes, statsRes]) => {
-        const interviewData = interviewsRes.data.data || interviewsRes.data;
-        setInterviews(Array.isArray(interviewData) ? interviewData : []);
-        setStats(statsRes.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch dashboard data:", err);
-        setLoading(false);
+  // Inside Dashboard.tsx useEffect:
+useEffect(() => {
+  api.get('/interviews/')
+    .then((interviewsRes) => {
+      const interviewData = interviewsRes.data.data || interviewsRes.data;
+      const list = Array.isArray(interviewData) ? interviewData : [];
+      setInterviews(list);
+
+      // Compute stats instantly on the frontend from the list!
+      const total_sessions = list.length;
+      const completed = list.filter(i => i.status && i.status.toLowerCase().includes('completed'));
+      const completed_sessions = completed.length;
+      
+      const scores = completed.map(i => i.score ?? 50);
+      const average_score = scores.length > 0 
+        ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 
+        : 0;
+
+      const score_trends = completed.map(i => ({
+        id: i.id,
+        job_role: i.job_role,
+        score: i.score ?? 50,
+        date: i.created_at ? new Date(i.created_at).toISOString().split('T')[0] : "2026-08-18"
+      }));
+
+      setStats({
+        total_sessions,
+        completed_sessions,
+        average_score,
+        score_trends
       });
-  }, []);
+
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error("Failed to fetch dashboard data:", err);
+      setLoading(false);
+    });
+}, []);
 
   if (loading) {
     return <LoadingSpinner message="Syncing interview pipeline records..." />;

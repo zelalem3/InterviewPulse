@@ -17,7 +17,7 @@ async def evaluate_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-   
+    # 1. Fetch interview and verify ownership
     interview = db.query(Interview).filter(
         Interview.id == interview_id,
         Interview.user_id == current_user.id
@@ -25,37 +25,51 @@ async def evaluate_interview(
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found")
 
-    # 2. Gather standard verbal/theory questions and answers
+    # 2. Gather standard verbal/theory questions and answers efficiently (Batch Lookup)
     questions = db.query(Question).filter(Question.interview_id == interview.id).all()
-    interview_data = []
-    for q in questions:
-        ans = db.query(Answer).filter(Answer.question_id == q.id).first()
-        interview_data.append({
+    question_ids = [q.id for q in questions]
+    
+    answers = []
+    if question_ids:
+        answers = db.query(Answer).filter(Answer.question_id.in_(question_ids)).all()
+    answer_map = {a.question_id: a.answer_text for a in answers}
+
+    interview_data = [
+        {
             "type": "theory_question",
             "question": q.question_text,
             "expected_topics": getattr(q, 'expected_topics', 'General technical competency'),
-            "answer": ans.answer_text if ans else "No answer provided"
-        })
+            "answer": answer_map.get(q.id, "No answer provided")
+        }
+        for q in questions
+    ]
 
-   
+    # 3. Gather coding challenges and submitted code efficiently (Batch Lookup)
     coding_questions = db.query(CodingQuestion).filter(CodingQuestion.interview_id == interview.id).all()
-    coding_data = []
-    for cq in coding_questions:
-        c_ans = db.query(CodingAnswer).filter(CodingAnswer.question_id == cq.id).first()
-        coding_data.append({
+    cq_ids = [cq.id for cq in coding_questions]
+    
+    coding_answers = []
+    if cq_ids:
+        coding_answers = db.query(CodingAnswer).filter(CodingAnswer.question_id.in_(cq_ids)).all()
+    c_answer_map = {ca.question_id: ca.answer_text for ca in coding_answers}
+
+    coding_data = [
+        {
             "type": "coding_challenge",
             "question": cq.question_text,
-            "candidate_code": c_ans.answer_text if c_ans else "No code submitted"
-        })
+            "candidate_code": c_answer_map.get(cq.id, "No code submitted")
+        }
+        for cq in coding_questions
+    ]
 
     if not interview_data and not coding_data:
         raise HTTPException(status_code=400, detail="No questions or coding challenges found for this interview evaluation.")
 
-    
+    # 4. Extract Resume Data safely
     latest_resume = current_user.resumes[-1] if current_user.resumes else None
     resume_data = latest_resume.extracted_data if latest_resume else "No resume data available"
 
-    
+    # 5. Call Gemini AI Evaluation
     ai_evaluation_raw = generate_comprehensive_evaluation(interview_data, coding_data, resume_data)
     
     try:
@@ -74,7 +88,6 @@ async def evaluate_interview(
 
     overall_score = float(eval_data.get("overall_score", 7.0))
     
-  
     feedback_payload = {
         "summary": eval_data.get("feedback_summary", ""),
         "categories": eval_data.get("categories", {}),
@@ -87,8 +100,6 @@ async def evaluate_interview(
     if existing_result:
         existing_result.overall_score = overall_score
         existing_result.feedback_summary = feedback_json_str
-        db.commit()
-        db.refresh(existing_result)
         result_record = existing_result
     else:
         result_record = Result(
@@ -97,12 +108,10 @@ async def evaluate_interview(
             feedback_summary=feedback_json_str
         )
         db.add(result_record)
-        db.commit()
-        db.refresh(result_record)
 
-   
     interview.status = "completed"
     db.commit()
+    db.refresh(result_record)
 
     return result_record
 
@@ -110,7 +119,8 @@ async def evaluate_interview(
 def generate_comprehensive_evaluation(interview_data: list, coding_data: list, parsed_text: str):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    # Using a fast, active model configuration
+    model = genai.GenerativeModel("gemini-1.5-flash")
     
     prompt = f"""
     You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 

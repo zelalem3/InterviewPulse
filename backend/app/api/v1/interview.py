@@ -9,46 +9,41 @@ from app.schemas.interview import InterviewCreate, InterviewResponse
 from app.core.deps import get_current_user
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
+
 @router.get("/stats/summary")
 async def get_user_interview_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Fetch all interviews for the current user
-    user_interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
-    
-    total_sessions = len(user_interviews)
-    
-    # Filter completed interviews
-    completed_interviews = [
-        i for i in user_interviews 
-        if i.status.lower() == "completed"
-    ]
-    
-    completed_count = len(completed_interviews)
-    
-    # Assign each completed interview a score (use actual score if present, otherwise fallback to 50)
+    total_sessions = db.query(func.count(Interview.id)).filter(Interview.user_id == current_user.id).scalar() or 0
+
+    completed_query = db.query(Interview).filter(
+        Interview.user_id == current_user.id,
+        func.lower(Interview.status) == "completed"
+    )
+    completed_sessions_list = completed_query.all()
+    completed_count = len(completed_sessions_list)
+
+    # Safely extract score using getattr with a fallback of 50 if the column/attribute doesn't exist
     processed_scores = [
-        getattr(i, 'score', None) if getattr(i, 'score', None) is not None else 50
-        for i in completed_interviews
+        getattr(i, 'score', 50) if getattr(i, 'score', 50) is not None else 50
+        for i in completed_sessions_list
     ]
-    
-    # Calculate average score safely across all completed sessions
+
     avg_score = (
         sum(processed_scores) / len(processed_scores) 
-        if len(processed_scores) > 0 
+        if processed_scores 
         else 0.0
     )
-    
-    # Prepare data points for the graph
+
     score_trends = [
         {
             "id": i.id,
             "job_role": i.job_role,
-            "score": getattr(i, 'score', None) if getattr(i, 'score', None) is not None else 50,
-            "date": i.created_at.strftime("%Y-%m-%d") if hasattr(i, 'created_at') and i.created_at else "2026-08-18"
+            "score": getattr(i, 'score', 50) if getattr(i, 'score', 50) is not None else 50,
+            "date": i.created_at.strftime("%Y-%m-%d") if i.created_at else "2026-08-18"
         }
-        for i in completed_interviews
+        for i in completed_sessions_list
     ]
 
     return {
@@ -57,6 +52,7 @@ async def get_user_interview_stats(
         "average_score": round(avg_score, 1),
         "score_trends": score_trends
     }
+
 
 @router.post("/", response_model=InterviewResponse, status_code=status.HTTP_201_CREATED)
 async def create_interview(
@@ -93,6 +89,7 @@ async def list_user_interviews(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Fetch only necessary fields or lightweight records for listing
     interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
     return interviews
 
