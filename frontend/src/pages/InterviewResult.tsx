@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api/axios";
-
+import LoadingSpinner from "../components/LoadinSpinner";
 interface DetailedBreakdownItem {
     question_type?: string;
     index?: number;
@@ -44,7 +44,7 @@ export function InterviewResult() {
         }
     }, [id]);
 
-    if (loading) return <div style={{ padding: '20px', color: '#fff' }}>Generating comprehensive AI evaluation... Please wait.</div>;
+    if (loading) return <LoadingSpinner />;
     if (error) return <div style={{ padding: '20px', color: '#ff6b6b' }}>{error}</div>;
     if (!result) return <div style={{ padding: '20px', color: '#fff' }}>No result found.</div>;
 
