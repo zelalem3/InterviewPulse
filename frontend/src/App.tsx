@@ -33,9 +33,16 @@ function Layout() {
           <Route path="/:interview_id/editor" element={<ProtectedRoute><CodeEditor /></ProtectedRoute>} />
           <Route path="/interview/history" element={<ProtectedRoute><InterviewHistory /></ProtectedRoute>} />
           <Route path="/interview/:id/result" element={<ProtectedRoute><InterviewResult /></ProtectedRoute>} />
-          <Route path="/videointerivew" element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-
+          <Route path="/videointerview" element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
+          <Route
+  path="/videointerview/:id"
+  element={
+    <ProtectedRoute>
+      <InterviewPage />
+    </ProtectedRoute>
+  }
+/>
           {/* --- 404 --- */}
           <Route path="*" element={<PageNotFound />} /> 
         </Routes>
