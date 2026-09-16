@@ -29,6 +29,7 @@ google-genai==2.18.1
 google-generativeai==0.8.6
 googleapis-common-protos==1.75.0
 greenlet==3.5.4
+groq==0.31.0
 grpcio==1.83.0
 grpcio-status==1.71.2
 h11==0.16.0

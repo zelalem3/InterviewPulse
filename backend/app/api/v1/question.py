@@ -1,22 +1,25 @@
 # backend/app/api/v1/question.py
-import os
 import json
-import time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.models.models import User, Interview, Resume, Question, Answer
 from app.core.deps import get_current_user
-import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted
+from app.services.llm import call_llm, LLMError
 
 router = APIRouter(prefix="/interviews", tags=["Conversational Interview"])
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+FALLBACK_QUESTIONS = [
+    "Tell me about a challenging technical problem you solved recently.",
+    "How would you design a REST API for a high-traffic application?",
+    "Explain how you would diagnose and fix a slow database query.",
+    "Describe a system design decision you made and the trade-offs involved.",
+    "How do you ensure code quality and reliability in a team environment?",
+    "Walk me through how you would approach debugging a production outage.",
+]
+
 
 def get_interview_history(interview_id: int, db: Session):
     questions = (
@@ -39,48 +42,7 @@ def get_interview_history(interview_id: int, db: Session):
     return history
 
 
-def _configure_gemini():
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise HTTPException(500, "GEMINI_API_KEY is not configured")
-    genai.configure(api_key=api_key)
-    # Use a model that usually has higher free-tier limits
-    return genai.GenerativeModel("models/gemini-2.0-flash")
-
-
-def _call_gemini_with_retry(model, prompt: str, max_retries: int = 3) -> dict:
-    """Call Gemini and parse JSON, with simple retry on 429 quota errors."""
-    last_error = None
-
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt)
-            text = (response.text or "").strip()
-            text = text.replace("```json", "").replace("```", "").strip()
-            return json.loads(text)
-        except ResourceExhausted as e:
-            last_error = e
-            wait = 25 * (attempt + 1)
-            print(f"[Gemini] Quota exceeded. Retrying in {wait}s... (attempt {attempt + 1})")
-            time.sleep(wait)
-        except json.JSONDecodeError as e:
-            last_error = e
-            print(f"[Gemini] Invalid JSON, attempt {attempt + 1}: {e}")
-            time.sleep(2)
-        except Exception as e:
-            last_error = e
-            print(f"[Gemini] Error, attempt {attempt + 1}: {e}")
-            time.sleep(2)
-
-    raise HTTPException(
-        status_code=429,
-        detail=f"Gemini API quota exceeded or failed after retries: {last_error}",
-    )
-
-
 def generate_first_question(resume_text, job_role) -> dict:
-    model = _configure_gemini()
-
     prompt = f"""
 You are starting a realistic technical interview.
 
@@ -98,7 +60,17 @@ Return ONLY valid JSON:
     "is_follow_up": false
 }}
 """
-    return _call_gemini_with_retry(model, prompt)
+    try:
+        return call_llm(prompt)
+    except LLMError as e:
+        print(f"[LLM] First question fallback: {e}")
+        return {
+            "question_text": FALLBACK_QUESTIONS[0],
+            "expected_topics": "General experience",
+            "topic": "Introduction",
+            "question_type": "initial",
+            "is_follow_up": False,
+        }
 
 
 def evaluate_and_next(
@@ -109,13 +81,6 @@ def evaluate_and_next(
     expected_topics: str | None,
     history: list,
 ) -> dict:
-    """
-    Single Gemini call that:
-    1) evaluates the current answer
-    2) decides next question OR finishes the interview
-    """
-    model = _configure_gemini()
-
     prompt = f"""
 You are an expert technical interviewer conducting an adaptive interview.
 
@@ -132,25 +97,24 @@ Previous conversation history:
 Tasks:
 1. Evaluate the candidate's answer (score 0-10).
 2. Decide whether to continue or finish the interview.
-3. If continuing, produce exactly ONE next question (follow-up or new topic).
+3. If continuing, produce exactly ONE next question.
 
 Rules:
-- Aim for about 5-6 total questions. If enough ground has been covered, set interview_finished=true.
-- Prefer follow-ups when the answer is vague, shallow, or interesting.
+- Aim for about 5-6 total questions. If enough ground is covered, set interview_finished=true.
+- Prefer follow-ups when the answer is vague or interesting.
 - Move to a new relevant topic when the current one is exhausted.
-- Keep questions realistic and technical.
 
-Return ONLY valid JSON with this exact structure:
+Return ONLY valid JSON:
 {{
   "evaluation": {{
     "score": 7.5,
-    "feedback": "Clear, constructive feedback for the candidate.",
+    "feedback": "Clear, constructive feedback.",
     "model_answer": "A strong example answer."
   }},
   "interview_finished": false,
   "next_question": {{
-    "question_text": "The next question text",
-    "expected_topics": "Topics this question should cover",
+    "question_text": "Next question text",
+    "expected_topics": "Topics to cover",
     "topic": "Short topic label",
     "question_type": "follow_up",
     "is_follow_up": true
@@ -159,12 +123,30 @@ Return ONLY valid JSON with this exact structure:
 
 If interview_finished is true, still include evaluation, and set next_question to null.
 """
-    return _call_gemini_with_retry(model, prompt)
+    try:
+        return call_llm(prompt)
+    except LLMError as e:
+        print(f"[LLM] Evaluate/next fallback: {e}")
+        n = len([h for h in history if h.get("answer")])
+        finished = n >= 4
+        return {
+            "evaluation": {
+                "score": 6.0,
+                "feedback": "Answer recorded. Full AI evaluation temporarily unavailable.",
+                "model_answer": "",
+            },
+            "interview_finished": finished,
+            "next_question": None
+            if finished
+            else {
+                "question_text": FALLBACK_QUESTIONS[n % len(FALLBACK_QUESTIONS)],
+                "expected_topics": "General",
+                "topic": "General",
+                "question_type": "fallback",
+                "is_follow_up": False,
+            },
+        }
 
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 @router.post("/{interview_id}/start")
 async def start_interview(
@@ -183,7 +165,6 @@ async def start_interview(
     resume = db.query(Resume).filter(Resume.id == interview.resume_id).first()
     resume_text = resume.extracted_data if resume else "No resume provided"
 
-    # If a question already exists, return it (idempotent start)
     existing_q = (
         db.query(Question)
         .filter(Question.interview_id == interview.id)
@@ -202,7 +183,8 @@ async def start_interview(
 
     question = Question(
         interview_id=interview.id,
-        question_text=q_data.get("question_text") or "Tell me about yourself and your relevant experience.",
+        question_text=q_data.get("question_text")
+        or "Tell me about yourself and your relevant experience.",
         expected_topics=q_data.get("expected_topics"),
         topic=q_data.get("topic"),
         question_type=q_data.get("question_type", "initial"),
@@ -251,10 +233,8 @@ async def submit_answer_and_proceed(
     resume = db.query(Resume).filter(Resume.id == interview.resume_id).first()
     resume_text = resume.extracted_data if resume else "No resume"
 
-    # History BEFORE saving current answer (for the prompt)
     history = get_interview_history(interview.id, db)
 
-    # Single Gemini call: evaluate + next step
     result = evaluate_and_next(
         resume_text=str(resume_text),
         job_role=interview.job_role,
@@ -269,7 +249,6 @@ async def submit_answer_and_proceed(
     feedback = eval_data.get("feedback")
     model_answer = eval_data.get("model_answer")
 
-    # Save / update answer
     db_answer = db.query(Answer).filter(Answer.question_id == question.id).first()
     if db_answer:
         db_answer.answer_text = answer_text
@@ -288,7 +267,6 @@ async def submit_answer_and_proceed(
 
     db.commit()
 
-    # Refresh history including current answer for scoring
     history = get_interview_history(interview.id, db)
     answered = [h for h in history if h.get("answer")]
     avg_score = (
@@ -297,7 +275,6 @@ async def submit_answer_and_proceed(
         else 0
     )
 
-    # Hard cap + AI decision
     force_finish = len(answered) >= 6
     ai_finished = bool(result.get("interview_finished"))
 
@@ -322,7 +299,6 @@ async def submit_answer_and_proceed(
 
     next_q_data = result.get("next_question") or {}
     if not next_q_data.get("question_text"):
-        # Fallback finish if AI returned no next question
         interview.status = "completed"
         db.commit()
         return {
