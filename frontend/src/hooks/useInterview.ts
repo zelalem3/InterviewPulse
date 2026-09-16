@@ -1,5 +1,4 @@
-// frontend/src/hooks/useInterview.ts
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/axios";
 import useSpeech from "./useSpeech";
 import useTranscript from "./useTranscript";
@@ -29,7 +28,6 @@ export default function useInterview(
   interviewId: string | undefined
 ) {
   const { speak, stopSpeech, speaking } = useSpeech();
-
   const {
     transcript,
     setTranscript,
@@ -37,7 +35,6 @@ export default function useInterview(
     startListening,
     stopListening,
   } = useTranscript();
-
   const { recording, startRecording, stopRecording } = useRecorder(stream);
   const timer = useTimer(120);
 
@@ -50,17 +47,13 @@ export default function useInterview(
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState(1);
-
-  // Audio is blocked by browsers until one user click
   const [interviewStarted, setInterviewStarted] = useState(false);
-  const audioUnlockedRef = useRef(false);
 
   const transcriptRef = useRef(transcript);
   useEffect(() => {
     transcriptRef.current = transcript;
   }, [transcript]);
 
-  // Load first question from backend (but don't speak yet)
   useEffect(() => {
     if (!interviewId) {
       setError("No interview ID provided");
@@ -70,34 +63,26 @@ export default function useInterview(
 
     let cancelled = false;
 
-    const load = async () => {
+    (async () => {
       try {
         setInitialLoading(true);
-        setError(null);
-
         const res = await api.post(`/interviews/${interviewId}/start`);
         if (cancelled) return;
-
         if (res.data?.question) {
           setCurrentQuestion(res.data.question);
-          setStatus("idle"); // waiting for user to begin
+          setStatus("idle");
           setQuestionCount(1);
         }
       } catch (err: any) {
-        console.error("Failed to start interview:", err);
         if (!cancelled) {
           setError(
-            err.response?.data?.detail ||
-              err.message ||
-              "Failed to start interview"
+            err.response?.data?.detail || err.message || "Failed to start interview"
           );
         }
       } finally {
         if (!cancelled) setInitialLoading(false);
       }
-    };
-
-    load();
+    })();
 
     return () => {
       cancelled = true;
@@ -108,48 +93,64 @@ export default function useInterview(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewId]);
 
-  // ---------- Begin interview (ONE click) → unlock audio + speak first question ----------
-  const beginInterview = useCallback(async () => {
-    if (!currentQuestion) return;
+  // Auto-speak when a new question is ready and interview has started
+  useEffect(() => {
+    if (!interviewStarted || status !== "reading" || !currentQuestion?.question_text) {
+      return;
+    }
+    const t = setTimeout(() => {
+      speak(currentQuestion.question_text);
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion?.id, interviewStarted, status]);
 
-    audioUnlockedRef.current = true;
+  const beginInterview = useCallback(() => {
+    if (!currentQuestion) return;
     setInterviewStarted(true);
     setStatus("reading");
+  }, [currentQuestion]);
 
-    // Interviewer asks the first question
-    await speak(currentQuestion.question_text);
-  }, [currentQuestion, speak]);
-
-  // ---------- Candidate starts answering (do NOT re-read the question) ----------
-const startAnswer = useCallback(async () => {
-  if (!currentQuestion) return;
-
-  if (!interviewStarted) {
-    setInterviewStarted(true);
-  }
-
-  stopSpeech();
-  setStatus("recording");
-  setTranscript("");
-  setError(null);
-
-  // Ensure mic permission is granted first
-  try {
-    if (!stream) {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+  const startAnswer = useCallback(() => {
+    if (!currentQuestion) {
+      console.warn("No current question");
+      return;
     }
-  } catch {
-    setError("Microphone permission is required for live transcript.");
-    setStatus("paused");
-    return;
-  }
+    if (!stream) {
+      setError("Camera/microphone not ready. Allow permissions and wait for preview.");
+      return;
+    }
 
-  startRecording();
-  startListening(); // only after mic is allowed
-  timer.reset(120);
-  timer.start();
-}, [/* deps */]);
-  // ---------- Stop answering + submit → backend evaluates → auto-speak next question ----------
+    if (!interviewStarted) {
+      setInterviewStarted(true);
+    }
+
+    stopSpeech();
+    setError(null);
+    setStatus("recording");
+    setTranscript("");
+
+    const ok = startRecording();
+    if (!ok) {
+      setError("Could not start recording. Check camera/mic permissions.");
+      setStatus("paused");
+      return;
+    }
+
+    startListening();
+    timer.reset(120);
+    timer.start();
+  }, [
+    currentQuestion,
+    stream,
+    interviewStarted,
+    stopSpeech,
+    startRecording,
+    startListening,
+    timer,
+    setTranscript,
+  ]);
+
   const stopAnswer = useCallback(async () => {
     stopRecording();
     stopListening();
@@ -172,7 +173,6 @@ const startAnswer = useCallback(async () => {
         `/interviews/questions/${currentQuestion.id}/answer`,
         { answer_text: answerText }
       );
-
       const data = res.data;
 
       setConversation((prev) => [
@@ -184,9 +184,8 @@ const startAnswer = useCallback(async () => {
           feedback: data.evaluation?.feedback,
         },
       ]);
-
       setTranscript("");
-      setQuestionCount((prev) => prev + 1);
+      setQuestionCount((p) => p + 1);
 
       if (data.interview_finished) {
         setResult(
@@ -200,18 +199,10 @@ const startAnswer = useCallback(async () => {
       } else if (data.next_question) {
         setCurrentQuestion(data.next_question);
         setStatus("reading");
-
-        // Real interview feel: interviewer asks the next question automatically
-        setTimeout(() => {
-          speak(data.next_question.question_text);
-        }, 600);
       }
     } catch (err: any) {
-      console.error("Error submitting answer:", err);
       setError(
-        err.response?.data?.detail ||
-          err.message ||
-          "Failed to submit answer"
+        err.response?.data?.detail || err.message || "Failed to submit answer"
       );
     } finally {
       setLoading(false);
@@ -223,10 +214,8 @@ const startAnswer = useCallback(async () => {
     stopSpeech,
     timer,
     setTranscript,
-    speak,
   ]);
 
-  // Next button = submit current answer
   const nextQuestion = useCallback(async () => {
     await stopAnswer();
   }, [stopAnswer]);
@@ -247,8 +236,8 @@ const startAnswer = useCallback(async () => {
     error,
     speaking,
     interviewStarted,
-    beginInterview, // ← show this button first
-    startAnswer,    // ← only after question was asked
+    beginInterview,
+    startAnswer,
     stopAnswer,
     nextQuestion,
     speak,

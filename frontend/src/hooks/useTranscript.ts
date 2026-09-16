@@ -1,4 +1,3 @@
-// frontend/src/hooks/useTranscript.ts
 import { useCallback, useRef, useState } from "react";
 
 declare global {
@@ -10,149 +9,122 @@ declare global {
 
 export default function useTranscript() {
   const recognitionRef = useRef<any>(null);
-  const finalTranscriptRef = useRef("");
+  const finalRef = useRef("");
+  const shouldListenRef = useRef(false);
 
   const [listening, setListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscriptState] = useState("");
   const [interim, setInterim] = useState("");
-  const [supported, setSupported] = useState(true);
+
+  const setTranscript = useCallback((value: string) => {
+    finalRef.current = value;
+    setTranscriptState(value);
+    setInterim("");
+  }, []);
 
   const startListening = useCallback(() => {
     const Recognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!Recognition) {
-      setSupported(false);
-      console.error("Speech Recognition not supported in this browser");
+      console.error("SpeechRecognition not supported");
       return;
     }
 
-    // Stop previous instance if any
+    shouldListenRef.current = true;
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onend = null;
         recognitionRef.current.stop();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
 
-    finalTranscriptRef.current = "";
-    setTranscript("");
+    finalRef.current = "";
+    setTranscriptState("");
     setInterim("");
 
     const recognition = new Recognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      setListening(true);
-    };
+    recognition.onstart = () => setListening(true);
 
     recognition.onerror = (event: any) => {
-  console.error("Speech recognition error:", event.error);
-
-  if (event.error === "not-allowed") {
-    setListening(false);
-    setSupported(false);
-    // optional: surface to UI
-  }
-
-  if (event.error === "aborted") {
-    // ignore
-  }
-};
+      console.error("Speech recognition error:", event.error);
+      if (event.error === "not-allowed") {
+        shouldListenRef.current = false;
+        setListening(false);
+      }
+    };
 
     recognition.onresult = (event: any) => {
       let interimText = "";
-      let newFinal = "";
+      let finalChunk = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const text = result[0].transcript;
-
-        if (result.isFinal) {
-          newFinal += text + " ";
-        } else {
-          interimText += text;
-        }
+        const r = event.results[i];
+        const t = r[0].transcript;
+        if (r.isFinal) finalChunk += t + " ";
+        else interimText += t;
       }
 
-      if (newFinal) {
-        finalTranscriptRef.current =
-          (finalTranscriptRef.current + " " + newFinal).replace(/\s+/g, " ").trim();
-        setTranscript(finalTranscriptRef.current);
+      if (finalChunk) {
+        finalRef.current = `${finalRef.current} ${finalChunk}`.replace(/\s+/g, " ").trim();
+        setTranscriptState(finalRef.current);
       }
-
       setInterim(interimText);
     };
 
-   recognition.onend = () => {
-  // Only auto-restart if we still intend to listen
-  if (recognitionRef.current === recognition) {
-    try {
-      recognition.start();
-    } catch (err) {
-      console.warn("Recognition restart failed:", err);
-      setListening(false);
-    }
-  } else {
-    setListening(false);
-  }
-};
+    recognition.onend = () => {
+      if (shouldListenRef.current && recognitionRef.current === recognition) {
+        try {
+          recognition.start();
+        } catch {
+          setListening(false);
+        }
+      } else {
+        setListening(false);
+      }
+    };
 
     recognitionRef.current = recognition;
-
     try {
       recognition.start();
     } catch (err) {
-      console.error("Failed to start recognition:", err);
+      console.error(err);
       setListening(false);
     }
   }, []);
 
   const stopListening = useCallback(() => {
-    const recognition = recognitionRef.current;
+    shouldListenRef.current = false;
+    const rec = recognitionRef.current;
     recognitionRef.current = null;
-
-    if (recognition) {
-      recognition.onend = null;
+    if (rec) {
+      rec.onend = null;
       try {
-        recognition.stop();
-      } catch {
-        // ignore
-      }
+        rec.stop();
+      } catch {}
     }
-
     setListening(false);
-    setInterim("");
+    setInterim((prev) => {
+      if (prev.trim()) {
+        const merged = `${finalRef.current} ${prev}`.replace(/\s+/g, " ").trim();
+        finalRef.current = merged;
+        setTranscriptState(merged);
+      }
+      return "";
+    });
+  }, []);
 
-    // Commit any leftover interim into final
-    if (interim.trim()) {
-      const merged = (finalTranscriptRef.current + " " + interim)
-        .replace(/\s+/g, " ")
-        .trim();
-      finalTranscriptRef.current = merged;
-      setTranscript(merged);
-    }
-  }, [interim]);
-
-  // What we show live = final + current interim
   const liveTranscript = [transcript, interim].filter(Boolean).join(" ").trim();
 
   return {
-    transcript: liveTranscript, // use this for display + submit
-    finalTranscript: transcript,
-    interim,
-    setTranscript: (value: string) => {
-      finalTranscriptRef.current = value;
-      setTranscript(value);
-      setInterim("");
-    },
+    transcript: liveTranscript,
+    setTranscript,
     listening,
-    supported,
     startListening,
     stopListening,
   };

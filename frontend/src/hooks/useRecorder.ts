@@ -8,42 +8,43 @@ export default function useRecorder(stream: MediaStream | null) {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
 
   const startRecording = useCallback(() => {
-    if (!stream) return;
+    if (!stream) {
+      console.error("No media stream — allow camera/mic first");
+      return false;
+    }
 
-    chunksRef.current = [];
+    try {
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
 
-    const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
 
-    recorder.ondataavailable = event => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
+      recorder.onstop = () => {
+        setVideoBlob(
+          new Blob(chunksRef.current, { type: "video/webm" })
+        );
+      };
 
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, {
-        type: "video/webm"
-      });
-
-      setVideoBlob(blob);
-    };
-
-    recorder.start();
-
-    recorderRef.current = recorder;
-
-    setRecording(true);
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+      return true;
+    } catch (err) {
+      console.error("MediaRecorder failed:", err);
+      setRecording(false);
+      return false;
+    }
   }, [stream]);
 
   const stopRecording = useCallback(() => {
-    recorderRef.current?.stop();
+    try {
+      recorderRef.current?.stop();
+    } catch {}
+    recorderRef.current = null;
     setRecording(false);
   }, []);
 
-  return {
-    recording,
-    videoBlob,
-    startRecording,
-    stopRecording
-  };
+  return { recording, videoBlob, startRecording, stopRecording };
 }
