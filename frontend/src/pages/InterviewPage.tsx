@@ -170,7 +170,11 @@ export default function InterviewPage() {
 
         <div className="flex flex-col gap-4">
           <Timer seconds={seconds} />
-          <Transcript transcript={transcript} onChange={setTranscript} />
+          <Transcript
+  transcript={transcript}
+  onChange={setTranscript}
+  listening={listening}
+/>
         </div>
       </div>
 
