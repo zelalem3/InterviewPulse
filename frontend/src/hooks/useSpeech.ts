@@ -1,79 +1,85 @@
-import { useCallback, useState } from "react";
-
+// frontend/src/hooks/useSpeech.ts
+import { useCallback, useRef, useState } from "react";
+import { api } from "../api/axios";
 
 export default function useSpeech() {
+  const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
-    const [speaking, setSpeaking] =
-        useState(false);
+  const stopSpeech = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+    setSpeaking(false);
+  }, []);
 
+  const speak = useCallback(
+    async (text: string) => {
+      if (!text?.trim()) return;
 
+      // Stop any current audio
+      stopSpeech();
 
-    const speak = useCallback(
-        (text: string) => {
+      try {
+        setSpeaking(true);
 
-            if (!window.speechSynthesis) {
-                console.error(
-                    "Speech synthesis not supported"
-                );
-                return;
-            }
+        const res = await api.post(
+          "/tts/generate",
+          { text: text.trim() },
+          { responseType: "blob" }
+        );
 
+        const blob = new Blob([res.data], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        objectUrlRef.current = url;
 
-            speechSynthesis.cancel();
+        const audio = new Audio(url);
+        audioRef.current = audio;
 
+        audio.onended = () => {
+          setSpeaking(false);
+          if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+          }
+          audioRef.current = null;
+        };
 
-            const utterance =
-                new SpeechSynthesisUtterance(text);
+        audio.onerror = () => {
+          console.error("Audio playback error");
+          setSpeaking(false);
+        };
 
-
-            utterance.onstart = () => {
-                setSpeaking(true);
-            };
-
-
-            utterance.onend = () => {
-                setSpeaking(false);
-            };
-
-
-            utterance.onerror = () => {
-                setSpeaking(false);
-            };
-
-
-            speechSynthesis.speak(
-                utterance
-            );
-
-        },
-        []
-    );
-
-
-
-    const stopSpeech = useCallback(() => {
-
-        if (!window.speechSynthesis) {
-            return;
-        }
-
-
-        speechSynthesis.cancel();
-
+        await audio.play();
+      } catch (err) {
+        console.error("TTS failed:", err);
         setSpeaking(false);
 
-    }, []);
+        // Last-resort browser TTS fallback
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text.trim());
+          u.lang = "en-US";
+          u.onstart = () => setSpeaking(true);
+          u.onend = () => setSpeaking(false);
+          u.onerror = () => setSpeaking(false);
+          window.speechSynthesis.speak(u);
+        }
+      }
+    },
+    [stopSpeech]
+  );
 
-
-
-    return {
-
-        speak,
-
-        stopSpeech,
-
-        speaking
-
-    };
-
+  return {
+    speak,
+    stopSpeech,
+    speaking,
+  };
 }
