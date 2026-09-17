@@ -1,128 +1,85 @@
-import { useCallback, useRef, useState } from "react";
-
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
+// src/hooks/useTranscript.ts
+import { useState, useCallback, useRef } from "react";
 
 export default function useTranscript() {
-  const recognitionRef = useRef<any>(null);
-  const finalRef = useRef("");
-  const shouldListenRef = useRef(false);
-
+  const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
-  const [transcript, setTranscriptState] = useState("");
-  const [interim, setInterim] = useState("");
-
-  const setTranscript = useCallback((value: string) => {
-    finalRef.current = value;
-    setTranscriptState(value);
-    setInterim("");
-  }, []);
+  const recognitionRef = useRef<any>(null);
 
   const startListening = useCallback(() => {
-    const Recognition =
+    // Safely check for browser speech recognition support
+    const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!Recognition) {
-      console.error("SpeechRecognition not supported");
+    if (!SpeechRecognition) {
+      console.warn(
+        "Speech recognition is not supported or is blocked in this browser (e.g., Brave/Firefox)."
+      );
       return;
     }
 
-    shouldListenRef.current = true;
-
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.onend = null;
         recognitionRef.current.stop();
-      } catch {}
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
 
-    finalRef.current = "";
-    setTranscriptState("");
-    setInterim("");
-
-    const recognition = new Recognition();
+    const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => setListening(true);
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      if (event.error === "not-allowed") {
-        shouldListenRef.current = false;
-        setListening(false);
-      }
+    recognition.onstart = () => {
+      setListening(true);
     };
 
     recognition.onresult = (event: any) => {
-      let interimText = "";
-      let finalChunk = "";
-
+      let currentTranscript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const r = event.results[i];
-        const t = r[0].transcript;
-        if (r.isFinal) finalChunk += t + " ";
-        else interimText += t;
+        currentTranscript += event.results[i][0].transcript;
       }
+      setTranscript(currentTranscript);
+    };
 
-      if (finalChunk) {
-        finalRef.current = `${finalRef.current} ${finalChunk}`.replace(/\s+/g, " ").trim();
-        setTranscriptState(finalRef.current);
+    recognition.onerror = (event: any) => {
+      if (event.error === "not-allowed") {
+        console.warn("Speech recognition blocked by browser security. Falling back to manual text input.");
+      } else {
+        console.warn("Speech recognition error:", event.error);
       }
-      setInterim(interimText);
+      setListening(false);
     };
 
     recognition.onend = () => {
-      if (shouldListenRef.current && recognitionRef.current === recognition) {
-        try {
-          recognition.start();
-        } catch {
-          setListening(false);
-        }
-      } else {
-        setListening(false);
-      }
+      setListening(false);
     };
 
     recognitionRef.current = recognition;
+
     try {
       recognition.start();
     } catch (err) {
-      console.error(err);
+      console.warn("Failed to start speech recognition:", err);
       setListening(false);
     }
   }, []);
 
   const stopListening = useCallback(() => {
-    shouldListenRef.current = false;
-    const rec = recognitionRef.current;
-    recognitionRef.current = null;
-    if (rec) {
-      rec.onend = null;
+    if (recognitionRef.current) {
       try {
-        rec.stop();
-      } catch {}
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      recognitionRef.current = null;
     }
     setListening(false);
-    setInterim((prev) => {
-      if (prev.trim()) {
-        const merged = `${finalRef.current} ${prev}`.replace(/\s+/g, " ").trim();
-        finalRef.current = merged;
-        setTranscriptState(merged);
-      }
-      return "";
-    });
   }, []);
 
-  const liveTranscript = [transcript, interim].filter(Boolean).join(" ").trim();
-
   return {
-    transcript: liveTranscript,
+    transcript,
     setTranscript,
     listening,
     startListening,

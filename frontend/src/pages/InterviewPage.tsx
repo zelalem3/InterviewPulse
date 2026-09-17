@@ -45,6 +45,20 @@ export default function InterviewPage() {
     );
   }
 
+  if (error && !currentQuestion && status !== "finished") {
+    return (
+      <div className="mx-auto max-w-lg p-8 text-center space-y-4">
+        <p className="text-rose-400 font-semibold">{error}</p>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-bold text-white"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
   if (status === "finished" && result) {
     return (
       <div className="mx-auto max-w-2xl p-8 text-center space-y-6">
@@ -53,11 +67,16 @@ export default function InterviewPage() {
           {Number(result.overall_score).toFixed(1)} / 10
         </p>
         <p className="text-slate-300 text-sm">{result.feedback_summary}</p>
-        <div className="space-y-2 text-left">
+        <div className="space-y-2 text-left max-h-64 overflow-y-auto">
           {conversation.map((item, i) => (
             <div key={i} className="rounded-xl border border-slate-800 p-3">
-              <p className="text-xs text-cyan-400">Q{i + 1}: {item.question}</p>
+              <p className="text-xs text-cyan-400">
+                Q{i + 1}: {item.question}
+              </p>
               <p className="text-xs text-slate-400">{item.answer}</p>
+              {item.score != null && (
+                <p className="text-xs text-amber-400">Score: {item.score}/10</p>
+              )}
             </div>
           ))}
         </div>
@@ -86,6 +105,11 @@ export default function InterviewPage() {
       {(error || cameraError) && (
         <div className="rounded-xl border border-rose-900 bg-rose-950/40 p-3 text-sm text-rose-300">
           {error || cameraError}
+          {cameraError && (
+            <span className="block mt-1 text-slate-400">
+              You can still type answers in the transcript box.
+            </span>
+          )}
         </div>
       )}
 
@@ -108,7 +132,11 @@ export default function InterviewPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Camera videoRef={videoRef} loading={cameraLoading} error={cameraError} />
+        <Camera
+          videoRef={videoRef}
+          loading={cameraLoading}
+          error={cameraError}
+        />
         <div className="flex flex-col gap-4">
           <Timer seconds={seconds} />
           <Transcript
@@ -122,12 +150,12 @@ export default function InterviewPage() {
       {!interviewStarted ? (
         <div className="text-center space-y-3">
           <p className="text-sm text-slate-400">
-            Allow camera/mic, then begin. The interviewer will ask questions out loud.
+            Click below to start. The interviewer will ask the first question.
           </p>
           <button
             type="button"
             onClick={beginInterview}
-            disabled={!currentQuestion || !!cameraError}
+            disabled={!currentQuestion}
             className="rounded-xl bg-cyan-500 px-6 py-3 font-bold text-slate-950 disabled:opacity-50"
           >
             Begin Interview
@@ -140,18 +168,18 @@ export default function InterviewPage() {
           onStart={startAnswer}
           onStop={stopAnswer}
           onNext={nextQuestion}
-          disabled={loading || !stream}
+          disabled={loading}
         />
       )}
 
       {loading && (
         <p className="text-center text-sm text-cyan-400 animate-pulse">
-          Evaluating answer...
+          Evaluating answer and preparing next question...
         </p>
       )}
 
       <p className="text-center text-xs text-slate-500">
-        Status: {status} | Stream: {stream ? "ready" : "missing"}
+        Status: {status} | Stream: {stream ? "ready" : "none"}
       </p>
     </div>
   );

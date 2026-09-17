@@ -54,6 +54,7 @@ export default function useInterview(
     transcriptRef.current = transcript;
   }, [transcript]);
 
+  // Load first question from backend
   useEffect(() => {
     if (!interviewId) {
       setError("No interview ID provided");
@@ -66,6 +67,7 @@ export default function useInterview(
     (async () => {
       try {
         setInitialLoading(true);
+        setError(null);
         const res = await api.post(`/interviews/${interviewId}/start`);
         if (cancelled) return;
         if (res.data?.question) {
@@ -76,7 +78,9 @@ export default function useInterview(
       } catch (err: any) {
         if (!cancelled) {
           setError(
-            err.response?.data?.detail || err.message || "Failed to start interview"
+            err.response?.data?.detail ||
+              err.message ||
+              "Failed to start interview"
           );
         }
       } finally {
@@ -93,9 +97,13 @@ export default function useInterview(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewId]);
 
-  // Auto-speak when a new question is ready and interview has started
+  // Auto-speak new questions after interview has started
   useEffect(() => {
-    if (!interviewStarted || status !== "reading" || !currentQuestion?.question_text) {
+    if (
+      !interviewStarted ||
+      status !== "reading" ||
+      !currentQuestion?.question_text
+    ) {
       return;
     }
     const t = setTimeout(() => {
@@ -111,13 +119,10 @@ export default function useInterview(
     setStatus("reading");
   }, [currentQuestion]);
 
+  // Start answering — STT optional (user can type if mic blocked)
   const startAnswer = useCallback(() => {
     if (!currentQuestion) {
       console.warn("No current question");
-      return;
-    }
-    if (!stream) {
-      setError("Camera/microphone not ready. Allow permissions and wait for preview.");
       return;
     }
 
@@ -130,20 +135,22 @@ export default function useInterview(
     setStatus("recording");
     setTranscript("");
 
-    const ok = startRecording();
-    if (!ok) {
-      setError("Could not start recording. Check camera/mic permissions.");
-      setStatus("paused");
-      return;
+    if (stream) {
+      startRecording();
     }
 
-    startListening();
+    try {
+      startListening();
+    } catch (err) {
+      console.warn("Live transcript unavailable:", err);
+    }
+
     timer.reset(120);
     timer.start();
   }, [
     currentQuestion,
-    stream,
     interviewStarted,
+    stream,
     stopSpeech,
     startRecording,
     startListening,
@@ -151,6 +158,7 @@ export default function useInterview(
     setTranscript,
   ]);
 
+  // Submit transcript to backend and get next question / finish
   const stopAnswer = useCallback(async () => {
     stopRecording();
     stopListening();
@@ -184,6 +192,7 @@ export default function useInterview(
           feedback: data.evaluation?.feedback,
         },
       ]);
+
       setTranscript("");
       setQuestionCount((p) => p + 1);
 
@@ -201,8 +210,11 @@ export default function useInterview(
         setStatus("reading");
       }
     } catch (err: any) {
+      console.error("Submit answer failed:", err);
       setError(
-        err.response?.data?.detail || err.message || "Failed to submit answer"
+        err.response?.data?.detail ||
+          err.message ||
+          "Failed to submit answer"
       );
     } finally {
       setLoading(false);
