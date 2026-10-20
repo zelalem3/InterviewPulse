@@ -44,21 +44,53 @@ def get_interview_history(interview_id: int, db: Session):
 
 def generate_first_question(resume_text, job_role) -> dict:
     prompt = f"""
-You are starting a realistic technical interview.
+You are an encouraging and fair interviewer conducting a technical interview for a Junior candidate.
 
 Job role: {job_role}
 Candidate resume: {resume_text}
 
-Ask exactly ONE strong opening technical question relevant to the role and resume.
+Current question: {question_text}
+Expected topics: {expected_topics}
+Candidate answer: {answer_text}
 
-Return ONLY valid JSON:
+Previous conversation history:
+{json.dumps(history, indent=2)}
+
+Tasks:
+1. Evaluate the candidate's answer fairly for an entry-level candidate (score 0-10).
+2. Decide whether to continue or wrap up the interview.
+3. If continuing, produce exactly ONE next question or follow-up.
+
+Clarity & Anxiety-Reduction Rules:
+- Keep questions short, single-focused, and direct (avoid multi-part or trick questions).
+- Use clear, non-intimidating phrasing (e.g., "Could you briefly explain...", "In your own words...", "How would you approach...").
+- If the candidate gave a weak or incomplete answer, frame the follow-up as a gentle hint or simple clarification rather than pointing out a mistake.
+- Never ask high-pressure system architecture questions or demand deep theoretical edge cases.
+- If asking a scenario question, anchor it to a common, practical daily coding scenario.
+
+Evaluation Guidelines:
+- Evaluate based on core conceptual understanding rather than senior-level precision or exact jargon.
+- Keep feedback constructive, empathetic, and highlighting what they got right before noting room for growth.
+- Aim for roughly 4 to 5 total questions to prevent cognitive overload.
+
+Return ONLY valid JSON with no markdown formatting:
 {{
-    "question_text": "",
-    "expected_topics": "",
-    "topic": "",
-    "question_type": "initial",
-    "is_follow_up": false
+  "evaluation": {{
+    "score": 7.5,
+    "feedback": "Constructive, encouraging feedback highlighting strengths and key learning points.",
+    "model_answer": "Clear, direct example answer covering the fundamental concepts."
+  }},
+  "interview_finished": false,
+  "next_question": {{
+    "question_text": "Clear, low-friction technical question or gentle follow-up",
+    "expected_topics": ["topic1", "topic2"],
+    "topic": "Main concept",
+    "question_type": "follow_up",
+    "is_follow_up": true
+  }}
 }}
+
+If interview_finished is true, include the evaluation and set next_question to null.
 """
     try:
         return call_llm(prompt)
@@ -82,46 +114,47 @@ def evaluate_and_next(
     history: list,
 ) -> dict:
     prompt = f"""
-You are an expert technical interviewer conducting an adaptive interview.
+You are an encouraging and fair interviewer conducting a technical interview for a Junior candidate.
 
 Job role: {job_role}
 Candidate resume: {resume_text}
 
 Current question: {question_text}
-Expected topics: {expected_topics or "General technical competency"}
+Expected topics: {expected_topics}
 Candidate answer: {answer_text}
 
 Previous conversation history:
 {json.dumps(history, indent=2)}
 
 Tasks:
-1. Evaluate the candidate's answer (score 0-10).
-2. Decide whether to continue or finish the interview.
-3. If continuing, produce exactly ONE next question.
+1. Evaluate the answer fairly for an entry-level candidate (score 0-10).
+2. Decide whether to continue or wrap up.
+3. If continuing, ask exactly ONE straightforward next question or follow-up.
 
-Rules:
-- Aim for about 5-6 total questions. If enough ground is covered, set interview_finished=true.
-- Prefer follow-ups when the answer is vague or interesting.
-- Move to a new relevant topic when the current one is exhausted.
+Guidelines for Junior Evaluation & Questions:
+- Be encouraging in feedback; evaluate based on core understanding rather than senior-level nuance.
+- Keep follow-ups supportive (e.g., ask for clarification or a simple example if they missed a concept).
+- Transition smoothly to another foundational concept if the current topic is complete.
+- Aim for roughly 4 to 5 total questions to keep the session clear and concise.
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with no markdown formatting:
 {{
   "evaluation": {{
     "score": 7.5,
-    "feedback": "Clear, constructive feedback.",
-    "model_answer": "A strong example answer."
+    "feedback": "Constructive, encouraging feedback tailored for a junior developer.",
+    "model_answer": "Clear, direct example answer covering the key points."
   }},
   "interview_finished": false,
   "next_question": {{
-    "question_text": "Next question text",
-    "expected_topics": "Topics to cover",
-    "topic": "Short topic label",
+    "question_text": "Next clear technical question or simple follow-up",
+    "expected_topics": ["topic1", "topic2"],
+    "topic": "Main concept",
     "question_type": "follow_up",
     "is_follow_up": true
   }}
 }}
 
-If interview_finished is true, still include evaluation, and set next_question to null.
+If interview_finished is true, include the evaluation and set next_question to null.
 """
     try:
         return call_llm(prompt)
