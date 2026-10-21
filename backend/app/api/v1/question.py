@@ -42,58 +42,44 @@ def get_interview_history(interview_id: int, db: Session):
     return history
 
 
-def generate_first_question(resume_text, job_role) -> dict:
+def generate_first_question(resume_text: str, job_role: str) -> dict:
+    """Generate the opening question for a junior technical interview."""
     prompt = f"""
 You are an encouraging and fair interviewer conducting a technical interview for a Junior candidate.
 
 Job role: {job_role}
 Candidate resume: {resume_text}
 
-Current question: {question_text}
-Expected topics: {expected_topics}
-Candidate answer: {answer_text}
-
-Previous conversation history:
-{json.dumps(history, indent=2)}
-
-Tasks:
-1. Evaluate the candidate's answer fairly for an entry-level candidate (score 0-10).
-2. Decide whether to continue or wrap up the interview.
-3. If continuing, produce exactly ONE next question or follow-up.
+Task:
+Generate exactly ONE clear, low-pressure opening technical question that is appropriate for a junior candidate.
+The question should be short, single-focused, and based on the resume or the target role.
 
 Clarity & Anxiety-Reduction Rules:
-- Keep questions short, single-focused, and direct (avoid multi-part or trick questions).
+- Keep the question short, single-focused, and direct (avoid multi-part or trick questions).
 - Use clear, non-intimidating phrasing (e.g., "Could you briefly explain...", "In your own words...", "How would you approach...").
-- If the candidate gave a weak or incomplete answer, frame the follow-up as a gentle hint or simple clarification rather than pointing out a mistake.
 - Never ask high-pressure system architecture questions or demand deep theoretical edge cases.
-- If asking a scenario question, anchor it to a common, practical daily coding scenario.
-
-Evaluation Guidelines:
-- Evaluate based on core conceptual understanding rather than senior-level precision or exact jargon.
-- Keep feedback constructive, empathetic, and highlighting what they got right before noting room for growth.
-- Aim for roughly 4 to 5 total questions to prevent cognitive overload.
+- Prefer a practical, everyday coding or problem-solving scenario.
 
 Return ONLY valid JSON with no markdown formatting:
 {{
-  "evaluation": {{
-    "score": 7.5,
-    "feedback": "Constructive, encouraging feedback highlighting strengths and key learning points.",
-    "model_answer": "Clear, direct example answer covering the fundamental concepts."
-  }},
-  "interview_finished": false,
-  "next_question": {{
-    "question_text": "Clear, low-friction technical question or gentle follow-up",
-    "expected_topics": ["topic1", "topic2"],
-    "topic": "Main concept",
-    "question_type": "follow_up",
-    "is_follow_up": true
-  }}
+  "question_text": "Clear, low-friction technical question",
+  "expected_topics": ["topic1", "topic2"],
+  "topic": "Main concept",
+  "question_type": "initial",
+  "is_follow_up": false
 }}
-
-If interview_finished is true, include the evaluation and set next_question to null.
 """
     try:
-        return call_llm(prompt)
+        result = call_llm(prompt)
+        # Normalise in case the model returns extra keys
+        return {
+            "question_text": result.get("question_text")
+            or "Tell me about yourself and your relevant experience.",
+            "expected_topics": result.get("expected_topics"),
+            "topic": result.get("topic"),
+            "question_type": result.get("question_type", "initial"),
+            "is_follow_up": bool(result.get("is_follow_up", False)),
+        }
     except LLMError as e:
         print(f"[LLM] First question fallback: {e}")
         return {
