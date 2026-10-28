@@ -16,20 +16,11 @@ interface ParsedFeedback {
   summary?: string;
   categories?: Record<string, number | string>;
   detailed_breakdown?: DetailedBreakdownItem[];
-  strengths?: string[];
-  growth_areas?: string[];
 }
 
 interface InterviewResultData {
   feedback_summary?: string;
   overall_score?: number | string;
-  questions?: Array<{
-    question: string;
-    answer: string;
-    critique?: string;
-    score?: number;
-    type?: string;
-  }>;
   [key: string]: unknown;
 }
 
@@ -56,56 +47,41 @@ export function InterviewResult() {
   }, [id]);
 
   if (loading) return <LoadingSpinner />;
-  if (error)
+  if (error) {
     return (
       <div style={{ padding: 40, color: "#ff6b6b", textAlign: "center", fontSize: 16 }}>
         {error}
       </div>
     );
-  if (!result)
+  }
+  if (!result) {
     return (
       <div style={{ padding: 40, color: "#fff", textAlign: "center" }}>
         No result found.
       </div>
     );
+  }
 
-  // Parse feedback
+  // Parse the feedback_summary JSON string
   let parsedFeedback: ParsedFeedback = {
-    summary: result.feedback_summary,
+    summary: "",
     categories: {},
     detailed_breakdown: [],
   };
 
   try {
     if (result.feedback_summary) {
-      const parsed = JSON.parse(result.feedback_summary);
-      parsedFeedback = { ...parsedFeedback, ...parsed };
+      parsedFeedback = JSON.parse(result.feedback_summary);
     }
   } catch {
-    parsedFeedback.summary = result.feedback_summary;
-  }
-
-  // Fallback: use questions array from API if detailed_breakdown is empty
-  if (
-    (!parsedFeedback.detailed_breakdown || parsedFeedback.detailed_breakdown.length === 0) &&
-    result.questions &&
-    result.questions.length > 0
-  ) {
-    parsedFeedback.detailed_breakdown = result.questions.map((q, idx) => ({
-      index: idx + 1,
-      question_type: q.type || "Question",
-      question: q.question,
-      answer: q.answer,
-      critique: q.critique,
-      score: q.score,
-    }));
+    parsedFeedback.summary = result.feedback_summary || "";
   }
 
   const score = Number(result.overall_score) || 0;
   const scoreColor =
     score >= 8 ? "#22c55e" : score >= 6.5 ? "#eab308" : score >= 5 ? "#f97316" : "#ef4444";
 
-  // Helper to render markdown-ish bold text
+  // Simple bold renderer for **text**
   const renderText = (text: string) => {
     if (!text) return null;
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -150,7 +126,14 @@ export function InterviewResult() {
             marginBottom: 16,
           }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e" }} />
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#22c55e",
+            }}
+          />
           Evaluation Complete
         </div>
         <h1
@@ -169,7 +152,7 @@ export function InterviewResult() {
         </p>
       </div>
 
-      {/* Overall Score + Categories Row */}
+      {/* Score + Categories */}
       <div
         style={{
           display: "grid",
@@ -178,7 +161,7 @@ export function InterviewResult() {
           marginBottom: 36,
         }}
       >
-        {/* Big Score Card */}
+        {/* Overall Score Card */}
         <div
           style={{
             background: "linear-gradient(160deg, #1a1a1e 0%, #141416 100%)",
@@ -218,7 +201,6 @@ export function InterviewResult() {
           </div>
           <div style={{ fontSize: 18, color: "#52525b", marginTop: 4 }}>/ 10</div>
 
-          {/* Progress bar */}
           <div
             style={{
               width: "100%",
@@ -263,59 +245,68 @@ export function InterviewResult() {
             Category Breakdown
           </h3>
 
-          {parsedFeedback.categories && Object.keys(parsedFeedback.categories).length > 0 ? (
+          {parsedFeedback.categories &&
+          Object.keys(parsedFeedback.categories).length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {Object.entries(parsedFeedback.categories).map(([category, catScore]) => {
-                const val = Number(catScore) || 0;
-                return (
-                  <div key={category}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 6,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: "#d4d4d8",
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {category.replace(/_/g, " ")}
-                      </span>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#fafafa" }}>
-                        {catScore}/10
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        height: 8,
-                        background: "#27272a",
-                        borderRadius: 99,
-                        overflow: "hidden",
-                      }}
-                    >
+              {Object.entries(parsedFeedback.categories).map(
+                ([category, catScore]) => {
+                  const val = Number(catScore) || 0;
+                  return (
+                    <div key={category}>
                       <div
                         style={{
-                          width: `${val * 10}%`,
-                          height: "100%",
-                          background:
-                            val >= 8
-                              ? "#22c55e"
-                              : val >= 6.5
-                              ? "#eab308"
-                              : val >= 5
-                              ? "#f97316"
-                              : "#ef4444",
-                          borderRadius: 99,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 6,
                         }}
-                      />
+                      >
+                        <span
+                          style={{
+                            fontSize: 14,
+                            color: "#d4d4d8",
+                            textTransform: "capitalize",
+                          }}
+                        >
+                          {category.replace(/_/g, " ")}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: "#fafafa",
+                          }}
+                        >
+                          {catScore}/10
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 8,
+                          background: "#27272a",
+                          borderRadius: 99,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${val * 10}%`,
+                            height: "100%",
+                            background:
+                              val >= 8
+                                ? "#22c55e"
+                                : val >= 6.5
+                                ? "#eab308"
+                                : val >= 5
+                                ? "#f97316"
+                                : "#ef4444",
+                            borderRadius: 99,
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </div>
           ) : (
             <p style={{ color: "#71717a", margin: 0, fontSize: 14 }}>
@@ -368,7 +359,7 @@ export function InterviewResult() {
         </div>
       </section>
 
-      {/* Detailed Q&A Breakdown */}
+      {/* Detailed Breakdown */}
       {parsedFeedback.detailed_breakdown &&
         parsedFeedback.detailed_breakdown.length > 0 && (
           <section>
@@ -394,7 +385,7 @@ export function InterviewResult() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header bar */}
+                  {/* Card Header */}
                   <div
                     style={{
                       background: "#1f1f23",
@@ -408,8 +399,14 @@ export function InterviewResult() {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <span
                         style={{
-                          background: "#1e3a5f",
-                          color: "#60a5fa",
+                          background:
+                            item.question_type === "coding"
+                              ? "#3b1f1f"
+                              : "#1e3a5f",
+                          color:
+                            item.question_type === "coding"
+                              ? "#f87171"
+                              : "#60a5fa",
                           fontSize: 12,
                           fontWeight: 600,
                           padding: "4px 12px",
@@ -424,6 +421,7 @@ export function InterviewResult() {
                         #{item.index || idx + 1}
                       </span>
                     </div>
+
                     {item.score !== undefined && (
                       <span
                         style={{
@@ -502,6 +500,10 @@ export function InterviewResult() {
                             lineHeight: 1.65,
                             color: "#d4d4d8",
                             whiteSpace: "pre-wrap",
+                            fontFamily:
+                              item.question_type === "coding"
+                                ? "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+                                : "inherit",
                           }}
                         >
                           {item.answer}
@@ -509,7 +511,7 @@ export function InterviewResult() {
                       </div>
                     )}
 
-                    {/* Critique */}
+                    {/* Critique / Feedback */}
                     {item.critique && (
                       <div>
                         <div
