@@ -5,6 +5,10 @@ from google.genai import types
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
+from openai import OpenAI
+import time
+from google.genai.errors import ClientError, ServerError
+from groq import Groq
 
 from app.database.session import get_db
 from app.models.models import User, Interview, Question, Answer, Result, CodingQuestion, CodingAnswer
@@ -16,6 +20,7 @@ router = APIRouter(prefix="/interviews", tags=["Evaluations"])
 @router.post("/{interview_id}/evaluate", response_model=ResultResponse, status_code=status.HTTP_201_CREATED)
 async def evaluate_interview(
     interview_id: int,
+    force: bool = False,                          # ← add this query param
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -27,7 +32,14 @@ async def evaluate_interview(
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found")
 
-    # 2. Gather standard verbal/theory questions and answers efficiently
+    # 2. Check if evaluation already exists
+    existing_result = db.query(Result).filter(Result.interview_id == interview.id).first()
+    
+    if existing_result and not force:
+        print(f"[Evaluation] Returning existing result for interview {interview_id}")
+        return existing_result
+
+    # 3. Gather standard verbal/theory questions and answers
     questions = db.query(Question).filter(Question.interview_id == interview.id).all()
     question_ids = [q.id for q in questions]
     
@@ -46,7 +58,7 @@ async def evaluate_interview(
         for q in questions
     ]
 
-    # 3. Gather coding challenges and submitted code efficiently
+    # 4. Gather coding challenges
     coding_questions = db.query(CodingQuestion).filter(CodingQuestion.interview_id == interview.id).all()
     cq_ids = [cq.id for cq in coding_questions]
     
@@ -65,20 +77,31 @@ async def evaluate_interview(
     ]
 
     if not interview_data and not coding_data:
-        raise HTTPException(status_code=400, detail="No questions or coding challenges found for this interview evaluation.")
+        raise HTTPException(
+            status_code=400, 
+            detail="No questions or coding challenges found for this interview evaluation."
+        )
 
-    # 4. Extract Resume Data safely
+    # 5. Extract Resume Data
     latest_resume = current_user.resumes[-1] if current_user.resumes else None
     resume_data = latest_resume.extracted_data if latest_resume else "No resume data available"
 
-    # 5. Call Gemini AI Evaluation using threadpool to prevent blocking FastAPI
-    ai_evaluation_raw = await run_in_threadpool(
-        generate_comprehensive_evaluation, 
-        interview_data, 
-        coding_data, 
-        resume_data
-    )
-    
+    # 6. Call AI Evaluation
+    try:
+        ai_evaluation_raw = await run_in_threadpool(
+            generate_comprehensive_evaluation, 
+            interview_data, 
+            coding_data, 
+            resume_data
+        )
+    except Exception as e:
+        print(f"[Evaluation] AI providers failed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Evaluation service temporarily unavailable. Please try again later. Error: {str(e)}"
+        )
+
+    # 7. Parse AI response
     try:
         eval_data = json.loads(ai_evaluation_raw)
     except json.JSONDecodeError:
@@ -90,7 +113,8 @@ async def evaluate_interview(
                 "communication": 7.0,
                 "code_implementation": 7.0
             },
-            "feedback_summary": "Good overall execution across technical and coding assessment sections."
+            "feedback_summary": "Good overall execution across technical and coding assessment sections.",
+            "detailed_breakdown": []
         }
 
     overall_score = float(eval_data.get("overall_score", 7.0))
@@ -102,12 +126,12 @@ async def evaluate_interview(
     }
     feedback_json_str = json.dumps(feedback_payload)
 
-    # 6. Save or update the result record
-    existing_result = db.query(Result).filter(Result.interview_id == interview.id).first()
+    # 8. Save or update the result
     if existing_result:
         existing_result.overall_score = overall_score
         existing_result.feedback_summary = feedback_json_str
         result_record = existing_result
+        print(f"[Evaluation] Updated existing result for interview {interview_id}")
     else:
         result_record = Result(
             interview_id=interview.id,
@@ -115,6 +139,7 @@ async def evaluate_interview(
             feedback_summary=feedback_json_str
         )
         db.add(result_record)
+        print(f"[Evaluation] Created new result for interview {interview_id}")
 
     interview.status = "completed"
     db.commit()
@@ -123,66 +148,159 @@ async def evaluate_interview(
     return result_record
 
 
+
+
 def generate_comprehensive_evaluation(interview_data: list, coding_data: list, parsed_text: str):
-    client = genai.Client()
-    
+    """
+    Tries providers in this order:
+    1. Gemini (multiple models)
+    2. Groq → llama-3.3-70b-versatile
+    3. OpenAI → gpt-4o-mini
+    """
+
     prompt = f"""
-            You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
-            including verbal interview answers AND their practical coding solutions, alongside their CV background details.
-            Evaluate their performance comprehensively to give them an insightful, motivating, and broad assessment.
+You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
+including verbal interview answers AND their practical coding solutions, alongside their CV background details.
+Evaluate their performance comprehensively to give them an insightful, motivating, and broad assessment.
 
-            Candidate CV Content:
-            {parsed_text}
+Candidate CV Content:
+{parsed_text}
 
-            Verbal/Theory Questions & Answers:
-            {json.dumps(interview_data, indent=2)}
+Verbal/Theory Questions & Answers:
+{json.dumps(interview_data, indent=2)}
 
-            Coding Challenges & Submitted Code:
-            {json.dumps(coding_data, indent=2)}
+Coding Challenges & Submitted Code:
+{json.dumps(coding_data, indent=2)}
 
-            Provide a detailed evaluation broken down across multiple core performance categories (scored out of 10):
-            1. Technical Accuracy & Conceptual Depth
-            2. Problem Solving, Logic & Code Implementation
-            3. Communication & Clarity (Theory responses)
-            4. Practical Execution & CV Alignment
+Provide a detailed evaluation broken down across multiple core performance categories (scored out of 10):
+1. Technical Accuracy & Conceptual Depth
+2. Problem Solving, Logic & Code Implementation
+3. Communication & Clarity (Theory responses)
+4. Practical Execution & CV Alignment
 
-            For every item in detailed_breakdown, you MUST include the original "question" and the candidate's "answer" (or code) exactly as provided, followed by your critique.
+For every item in detailed_breakdown, you MUST include the original "question" and the candidate's "answer" (or code) exactly as provided, followed by your critique.
 
-            Return the result strictly as a JSON object with the following schema:
-            {{
-            "overall_score": 7.5,
-            "categories": {{
-                "technical_depth": 8.0,
-                "problem_solving": 7.0,
-                "communication": 8.5,
-                "code_implementation": 7.5
-            }},
-            "feedback_summary": "A comprehensive, encouraging summary highlighting major strengths, code quality assessment, growth areas, and actionable advice.",
-            "detailed_breakdown": [
-                {{
-                "question_type": "theory",
-                "index": 1,
-                "question": "The exact question text that was asked",
-                "answer": "The candidate's full answer text",
-                "critique": "Specific, constructive feedback for this theory question."
-                }},
-                {{
-                "question_type": "coding",
-                "index": 1,
-                "question": "The exact coding challenge text",
-                "answer": "The candidate's submitted code (or 'No code submitted')",
-                "critique": "Detailed code review: correctness, efficiency, style, edge cases, etc."
-                }}
-            ]
-            }}
-            """
-    
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        ),
-    )
-    
-    return response.text
+Return the result strictly as a JSON object with the following schema:
+{{
+  "overall_score": 7.5,
+  "categories": {{
+    "technical_depth": 8.0,
+    "problem_solving": 7.0,
+    "communication": 8.5,
+    "code_implementation": 7.5
+  }},
+  "feedback_summary": "A comprehensive, encouraging summary highlighting major strengths, code quality assessment, growth areas, and actionable advice.",
+  "detailed_breakdown": [
+    {{
+      "question_type": "theory",
+      "index": 1,
+      "question": "The exact question text that was asked",
+      "answer": "The candidate's full answer text",
+      "critique": "Specific, constructive feedback for this theory question."
+    }},
+    {{
+      "question_type": "coding",
+      "index": 1,
+      "question": "The exact coding challenge text",
+      "answer": "The candidate's submitted code (or 'No code submitted')",
+      "critique": "Detailed code review: correctness, efficiency, style, edge cases, etc."
+    }}
+  ]
+}}
+"""
+
+    last_error = None
+
+    # ============================================
+    # 1. Try Gemini models
+    # ============================================
+    gemini_models = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+    ]
+
+    try:
+        client = genai.Client()
+        for model_name in gemini_models:
+            try:
+                print(f"[Evaluation] Trying Gemini → {model_name}")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.3,
+                    ),
+                )
+                print(f"[Evaluation] ✅ Success with Gemini → {model_name}")
+                return response.text
+            except (ClientError, ServerError) as e:
+                print(f"[Evaluation] Gemini {model_name} failed: {e}")
+                last_error = e
+                continue
+    except Exception as e:
+        print(f"[Evaluation] Gemini client error: {e}")
+        last_error = e
+
+    # ============================================
+    # 2. Try Groq → Llama 3.3 70B
+    # ============================================
+    try:
+        groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+        print("[Evaluation] Trying Groq → llama-3.3-70b-versatile")
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",          # correct Groq model ID
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert technical interviewer. Always respond with valid JSON only. Do not include any text outside the JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+        )
+        print("[Evaluation] ✅ Success with Groq → llama-3.3-70b-versatile")
+        return response.choices[0].message.content
+
+    except Exception as e:
+        print(f"[Evaluation] Groq failed: {e}")
+        last_error = e
+
+    # ============================================
+    # 3. Fallback to OpenAI
+    # ============================================
+    try:
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+        print("[Evaluation] Trying OpenAI → gpt-4o-mini")
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert technical interviewer. Always respond with valid JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+        print("[Evaluation] ✅ Success with OpenAI → gpt-4o-mini")
+        return response.choices[0].message.content
+
+    except Exception as e:
+        print(f"[Evaluation] OpenAI failed: {e}")
+        last_error = e
+
+    # If everything failed
+    raise Exception(f"All providers failed. Last error: {last_error}")
