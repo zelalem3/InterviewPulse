@@ -2,9 +2,16 @@
 import { useState, useCallback, useRef } from "react";
 
 // Minimal type definitions for the Web Speech API
-interface SpeechRecognitionResult {
+interface SpeechRecognitionAlternative {
   readonly transcript: string;
   readonly confidence: number;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  readonly isFinal: boolean;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
 }
 
 interface SpeechRecognitionResultList {
