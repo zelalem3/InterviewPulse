@@ -127,49 +127,55 @@ def generate_comprehensive_evaluation(interview_data: list, coding_data: list, p
     client = genai.Client()
     
     prompt = f"""
-    You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
-    including verbal interview answers AND their practical coding solutions, alongside their CV background details.
-    Evaluate their performance comprehensively to give them an insightful, motivating, and broad assessment.
-    
-    Candidate CV Content:
-    {parsed_text}
-    
-    Verbal/Theory Questions & Answers:
-    {json.dumps(interview_data, indent=2)}
-    
-    Coding Challenges & Submitted Code:
-    {json.dumps(coding_data, indent=2)}
-    
-    Provide a detailed evaluation broken down across multiple core performance categories (scored out of 10):
-    1. Technical Accuracy & Conceptual Depth
-    2. Problem Solving, Logic & Code Implementation
-    3. Communication & Clarity (Theory responses)
-    4. Practical Execution & CV Alignment
-    
-    Return the result strictly as a JSON object with the following schema:
-    {{
-      "overall_score": 7.5,
-      "categories": {{
-        "technical_depth": 8.0,
-        "problem_solving": 7.0,
-        "communication": 8.5,
-        "code_implementation": 7.5
-      }},
-      "feedback_summary": "A comprehensive, encouraging summary highlighting major strengths, code quality assessment, growth areas, and actionable advice.",
-      "detailed_breakdown": [
-        {{
-          "question_type": "theory",
-          "index": 1,
-          "critique": "Specific feedback for theory item."
-        }},
-        {{
-          "question_type": "coding",
-          "index": 1,
-          "critique": "Specific code review critique, syntax correctness, and algorithmic approach."
-        }}
-      ]
-    }}
-    """
+            You are an expert technical hiring manager and principal interviewer. Review the candidate's complete performance, 
+            including verbal interview answers AND their practical coding solutions, alongside their CV background details.
+            Evaluate their performance comprehensively to give them an insightful, motivating, and broad assessment.
+
+            Candidate CV Content:
+            {parsed_text}
+
+            Verbal/Theory Questions & Answers:
+            {json.dumps(interview_data, indent=2)}
+
+            Coding Challenges & Submitted Code:
+            {json.dumps(coding_data, indent=2)}
+
+            Provide a detailed evaluation broken down across multiple core performance categories (scored out of 10):
+            1. Technical Accuracy & Conceptual Depth
+            2. Problem Solving, Logic & Code Implementation
+            3. Communication & Clarity (Theory responses)
+            4. Practical Execution & CV Alignment
+
+            For every item in detailed_breakdown, you MUST include the original "question" and the candidate's "answer" (or code) exactly as provided, followed by your critique.
+
+            Return the result strictly as a JSON object with the following schema:
+            {{
+            "overall_score": 7.5,
+            "categories": {{
+                "technical_depth": 8.0,
+                "problem_solving": 7.0,
+                "communication": 8.5,
+                "code_implementation": 7.5
+            }},
+            "feedback_summary": "A comprehensive, encouraging summary highlighting major strengths, code quality assessment, growth areas, and actionable advice.",
+            "detailed_breakdown": [
+                {{
+                "question_type": "theory",
+                "index": 1,
+                "question": "The exact question text that was asked",
+                "answer": "The candidate's full answer text",
+                "critique": "Specific, constructive feedback for this theory question."
+                }},
+                {{
+                "question_type": "coding",
+                "index": 1,
+                "question": "The exact coding challenge text",
+                "answer": "The candidate's submitted code (or 'No code submitted')",
+                "critique": "Detailed code review: correctness, efficiency, style, edge cases, etc."
+                }}
+            ]
+            }}
+            """
     
     response = client.models.generate_content(
         model="gemini-2.5-flash",
