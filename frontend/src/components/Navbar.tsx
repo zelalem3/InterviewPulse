@@ -19,7 +19,7 @@ const Navbar: React.FC = () => {
   const token = useAuthStore((state) => state.token);
   const logout = useAuthStore((state) => state.logout);
 
-  const isLoggedIn = !!token && !!user;
+  const isLoggedIn = !token
 
   const handleLogout = () => {
     logout();
