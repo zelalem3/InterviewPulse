@@ -7,7 +7,6 @@ import {
   Video, 
   Code, 
   LogOut, 
-  ShieldAlert 
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -105,7 +104,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                   {user?.name || 'Operator'}
                 </p>
                 <p className="text-[10px] font-medium text-slate-400 truncate">
-                  {user?.email || 'operator@interviewpulse.io'}
+                  {user?.email}
                 </p>
               </div>
             </div>
