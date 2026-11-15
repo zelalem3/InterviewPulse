@@ -6,8 +6,10 @@ export default function useSpeech() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const requestIdRef = useRef(0);
 
   const stopSpeech = useCallback(() => {
+    requestIdRef.current += 1;
     utteranceRef.current = null;
     window.speechSynthesis?.cancel();
     if (audioRef.current) {
@@ -25,6 +27,47 @@ export default function useSpeech() {
     async (text: string) => {
       if (!text?.trim()) return;
       stopSpeech();
+      const requestId = requestIdRef.current;
+
+      const speakWithBackend = async () => {
+        if (requestId !== requestIdRef.current) return;
+        try {
+          setSpeaking(true);
+          const res = await api.post(
+            "/tts/generate",
+            { text: text.trim() },
+            { responseType: "blob" }
+          );
+          if (requestId !== requestIdRef.current) return;
+
+          const blob = new Blob([res.data], { type: "audio/mpeg" });
+          const url = URL.createObjectURL(blob);
+          urlRef.current = url;
+
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          const cleanupAudio = () => {
+            if (audioRef.current === audio) {
+              audioRef.current = null;
+              setSpeaking(false);
+            }
+            if (urlRef.current === url) {
+              URL.revokeObjectURL(url);
+              urlRef.current = null;
+            }
+          };
+          audio.onended = cleanupAudio;
+          audio.onerror = () => {
+            cleanupAudio();
+            console.error("Backend speech audio could not be played.");
+          };
+          await audio.play();
+        } catch (err) {
+          if (requestId !== requestIdRef.current) return;
+          console.error("Fallback speech generation failed:", err);
+          setSpeaking(false);
+        }
+      };
 
       if (
         "speechSynthesis" in window &&
@@ -41,46 +84,22 @@ export default function useSpeech() {
         };
         utterance.onerror = (event) => {
           if (utteranceRef.current !== utterance) return;
-          console.error("Browser speech synthesis failed:", event.error);
           utteranceRef.current = null;
-          setSpeaking(false);
+          if (event.error === "canceled" || event.error === "interrupted") {
+            setSpeaking(false);
+            return;
+          }
+          console.warn(
+            "Browser speech synthesis failed; trying backend speech:",
+            event.error
+          );
+          void speakWithBackend();
         };
         window.speechSynthesis.speak(utterance);
         return;
       }
 
-      try {
-        setSpeaking(true);
-        const res = await api.post(
-          "/tts/generate",
-          { text: text.trim() },
-          { responseType: "blob" }
-        );
-        const blob = new Blob([res.data], { type: "audio/mpeg" });
-        const url = URL.createObjectURL(blob);
-        urlRef.current = url;
-
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => {
-          setSpeaking(false);
-          if (urlRef.current) {
-            URL.revokeObjectURL(urlRef.current);
-            urlRef.current = null;
-          }
-        };
-        audio.onerror = () => {
-          setSpeaking(false);
-          if (urlRef.current) {
-            URL.revokeObjectURL(urlRef.current);
-            urlRef.current = null;
-          }
-        };
-        await audio.play();
-      } catch (err) {
-        console.error("TTS failed:", err);
-        setSpeaking(false);
-      }
+      await speakWithBackend();
     },
     [stopSpeech]
   );
