@@ -448,6 +448,7 @@ DATABASE_URL=postgresql://postgres:postgres@db:5432/interviewpulse
 SECRET_KEY=your-secret-key
 
 AI_API_KEY=your-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 Never commit `.env` or API keys to the repository.
