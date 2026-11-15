@@ -5,8 +5,11 @@ export default function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const stopSpeech = useCallback(() => {
+    utteranceRef.current = null;
+    window.speechSynthesis?.cancel();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -22,6 +25,29 @@ export default function useSpeech() {
     async (text: string) => {
       if (!text?.trim()) return;
       stopSpeech();
+
+      if (
+        "speechSynthesis" in window &&
+        typeof SpeechSynthesisUtterance !== "undefined"
+      ) {
+        const utterance = new SpeechSynthesisUtterance(text.trim());
+        utterance.lang = "en-US";
+        utteranceRef.current = utterance;
+        utterance.onstart = () => setSpeaking(true);
+        utterance.onend = () => {
+          if (utteranceRef.current !== utterance) return;
+          utteranceRef.current = null;
+          setSpeaking(false);
+        };
+        utterance.onerror = (event) => {
+          if (utteranceRef.current !== utterance) return;
+          console.error("Browser speech synthesis failed:", event.error);
+          utteranceRef.current = null;
+          setSpeaking(false);
+        };
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
 
       try {
         setSpeaking(true);
@@ -43,19 +69,17 @@ export default function useSpeech() {
             urlRef.current = null;
           }
         };
-        audio.onerror = () => setSpeaking(false);
+        audio.onerror = () => {
+          setSpeaking(false);
+          if (urlRef.current) {
+            URL.revokeObjectURL(urlRef.current);
+            urlRef.current = null;
+          }
+        };
         await audio.play();
       } catch (err) {
         console.error("TTS failed:", err);
         setSpeaking(false);
-        if (window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text.trim());
-          u.lang = "en-US";
-          u.onstart = () => setSpeaking(true);
-          u.onend = () => setSpeaking(false);
-          window.speechSynthesis.speak(u);
-        }
       }
     },
     [stopSpeech]
