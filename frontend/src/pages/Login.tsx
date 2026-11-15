@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import {
   Mail,
   Lock,
@@ -11,7 +12,6 @@ import {
 import { api as axios } from "../api/axios";
 import { useAuthStore } from "../store/authStore";
 
-import Navbar from "../components/Navbar";
 import InterviewPulseLogo from "../components/InterviewPulseLogo";
 
 const Login = () => {
@@ -21,13 +21,7 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loginAction = useAuthStore((state) => state.login);
-  const logoutAction = useAuthStore((state) => state.logout);
-
   const navigate = useNavigate();
-
-  useEffect(() => {
-    logoutAction();
-  }, [logoutAction]);
 
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,8 +42,11 @@ const Login = () => {
       loginAction(user, access_token);
 
       navigate("/", { replace: true });
-    } catch (error: any) {
-      if (error.response?.status === 422) {
+    } catch (error: unknown) {
+      if (
+        isAxiosError<{ errors?: Record<string, string | string[]> }>(error) &&
+        error.response?.status === 422
+      ) {
         const errors = error.response.data?.errors;
 
         if (errors) {
