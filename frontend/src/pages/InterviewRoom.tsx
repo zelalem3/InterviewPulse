@@ -2,9 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/axios';
-import { Sparkles, Send, CheckCircle2, Award, Terminal, ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react';
+import { Sparkles, Send, CheckCircle2, Award, Terminal, ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../components/LoadinSpinner';
-import SkillBadge from '../components/SkillBadge';
 
 interface Question {
   id: number;
@@ -31,27 +30,39 @@ export default function InterviewRoom() {
   const [answer, setAnswer] = useState<string>('');
   const [conversation, setConversation] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [loadedInterviewId, setLoadedInterviewId] = useState<string>();
   const [result, setResult] = useState<FinalResult | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(1);
 
   useEffect(() => {
-    startInterview();
-  }, [interviewId]);
+    if (!interviewId) return;
+    let cancelled = false;
 
-  const startInterview = async () => {
-    try {
-      setInitialLoading(true);
-      const res = await api.post(`/interviews/${interviewId}/start`);
-      if (res.data?.question) {
-        setCurrentQuestion(res.data.question);
-      }
-    } catch (err) {
-      console.error("Failed to start interview:", err);
-    } finally {
-      setInitialLoading(false);
-    }
-  };
+    api.post(`/interviews/${interviewId}/start`)
+      .then((res) => {
+        if (!cancelled && res.data?.coding_required) {
+          navigate(`/${interviewId}/editor`, { replace: true });
+        } else if (!cancelled && res.data?.question) {
+          setCurrentQuestion(res.data.question);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to start interview:", err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedInterviewId(interviewId);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [interviewId, navigate]);
+
+  const initialLoading = Boolean(interviewId) && loadedInterviewId !== interviewId;
 
   const submitAnswer = async () => {
     if (!currentQuestion || !answer.trim()) return;
@@ -101,7 +112,7 @@ export default function InterviewRoom() {
       {/* --- TOP NAVIGATION / HEADER BAR --- */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(`/${interviewId}/editor`)}
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl transition cursor-pointer select-none shadow-inner"
         >
           <ArrowLeft size={15} />
@@ -175,9 +186,9 @@ export default function InterviewRoom() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl font-black text-white tracking-tight">Interview Completed Successfully</h2>
+            <h2 className="text-xl font-black text-white tracking-tight">Verbal Interview Complete</h2>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Your evaluation matrix has been saved to your pipeline records.
+                Continue to the coding challenge to finish your interview and get the complete evaluation.
             </p>
           </div>
 
@@ -198,7 +209,7 @@ export default function InterviewRoom() {
               onClick={() => navigate('/dashboard')}
               className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg cursor-pointer select-none"
             >
-              Return to Operational Dashboard
+              Continue to Coding Challenge
             </button>
           </div>
         </div>

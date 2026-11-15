@@ -37,10 +37,10 @@ interface SpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
 }
 
 interface SpeechRecognitionConstructor {
@@ -56,9 +56,15 @@ declare global {
 }
 
 export default function useTranscript() {
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscriptValue] = useState("");
+  const transcriptRef = useRef("");
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const setTranscript = useCallback((value: string) => {
+    transcriptRef.current = value;
+    setTranscriptValue(value);
+  }, []);
 
   const startListening = useCallback(() => {
     const SpeechRecognitionCtor =
@@ -74,7 +80,7 @@ export default function useTranscript() {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors
       }
     }
@@ -90,7 +96,7 @@ export default function useTranscript() {
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let currentTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         currentTranscript += event.results[i][0].transcript;
       }
       setTranscript(currentTranscript);
@@ -119,23 +125,39 @@ export default function useTranscript() {
       console.warn("Failed to start speech recognition:", err);
       setListening(false);
     }
-  }, []);
+  }, [setTranscript]);
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      recognitionRef.current = null;
+  const getTranscript = useCallback(() => transcriptRef.current, []);
+
+  const stopListening = useCallback((): Promise<void> => {
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      setListening(false);
+      return Promise.resolve();
     }
-    setListening(false);
+
+    return new Promise((resolve) => {
+      const handleEnd = recognition.onend;
+      recognition.onend = (event) => {
+        handleEnd?.call(recognition, event);
+        recognitionRef.current = null;
+        resolve();
+      };
+
+      try {
+        recognition.stop();
+      } catch {
+        recognitionRef.current = null;
+        setListening(false);
+        resolve();
+      }
+    });
   }, []);
 
   return {
     transcript,
     setTranscript,
+    getTranscript,
     listening,
     startListening,
     stopListening,
