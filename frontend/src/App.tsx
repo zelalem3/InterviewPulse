@@ -1,19 +1,28 @@
 // src/App.tsx
-import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import NewInterview from './pages/NewInterview';
-import InterviewRoom from './pages/InterviewRoom';
-import Register from './pages/RegisterPage';
-import { CodeEditor } from './pages/CodeEditor';
-import { InterviewHistory } from './pages/InterviewHistory';
-import { PageNotFound } from './pages/PageNotFound';
-import { InterviewResult } from './pages/InterviewResult';
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import InterviewPage from './pages/InterviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import Settings from './pages/settings';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const NewInterview = lazy(() => import('./pages/NewInterview'));
+const InterviewRoom = lazy(() => import('./pages/InterviewRoom'));
+const Register = lazy(() => import('./pages/RegisterPage'));
+const CodeEditor = lazy(() =>
+  import('./pages/CodeEditor').then((module) => ({ default: module.CodeEditor })),
+);
+const InterviewHistory = lazy(() =>
+  import('./pages/InterviewHistory').then((module) => ({ default: module.InterviewHistory })),
+);
+const PageNotFound = lazy(() =>
+  import('./pages/PageNotFound').then((module) => ({ default: module.PageNotFound })),
+);
+const InterviewResult = lazy(() =>
+  import('./pages/InterviewResult').then((module) => ({ default: module.InterviewResult })),
+);
+const InterviewPage = lazy(() => import('./pages/InterviewPage'));
+const Settings = lazy(() => import('./pages/settings'));
 
 function Layout() {
   return (
@@ -21,6 +30,13 @@ function Layout() {
       
       <Navbar />
       <main className="flex-1">
+        <Suspense
+          fallback={
+            <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-400" role="status">
+              Loading page...
+            </div>
+          }
+        >
         <Routes>
           {/* --- PUBLIC ROUTES --- */}
           <Route path="/register" element={<Register />} />
@@ -46,6 +62,7 @@ function Layout() {
           {/* --- 404 --- */}
           <Route path="*" element={<PageNotFound />} /> 
         </Routes>
+        </Suspense>
       </main>
     </div>
   );

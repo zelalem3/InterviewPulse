@@ -37,44 +37,28 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
 
-  // Inside Dashboard.tsx useEffect:
 useEffect(() => {
-  api.get('/interviews/')
-    .then((interviewsRes) => {
+  let cancelled = false;
+  Promise.all([
+    api.get('/interviews/', { params: { limit: 50 } }),
+    api.get('/interviews/stats/summary'),
+  ])
+    .then(([interviewsRes, statsRes]) => {
+      if (cancelled) return;
       const interviewData = interviewsRes.data.data || interviewsRes.data;
-      const list = Array.isArray(interviewData) ? interviewData : [];
-      setInterviews(list);
-
-      // Compute stats instantly on the frontend from the list!
-      const total_sessions = list.length;
-      const completed = list.filter(i => i.status && i.status.toLowerCase().includes('completed'));
-      const completed_sessions = completed.length;
-      
-      const scores = completed.map(i => i.score ?? 50);
-      const average_score = scores.length > 0 
-        ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 
-        : 0;
-
-      const score_trends = completed.map(i => ({
-        id: i.id,
-        job_role: i.job_role,
-        score: i.score ?? 50,
-        date: i.created_at ? new Date(i.created_at).toISOString().split('T')[0] : "2026-08-18"
-      }));
-
-      setStats({
-        total_sessions,
-        completed_sessions,
-        average_score,
-        score_trends
-      });
-
-      setLoading(false);
+      setInterviews(Array.isArray(interviewData) ? interviewData : []);
+      setStats(statsRes.data);
     })
     .catch((err) => {
       console.error("Failed to fetch dashboard data:", err);
-      setLoading(false);
+    })
+    .finally(() => {
+      if (!cancelled) setLoading(false);
     });
+
+  return () => {
+    cancelled = true;
+  };
 }, []);
 
   if (loading) {
@@ -182,7 +166,7 @@ useEffect(() => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="date" stroke="#64748b" textAnchor="end" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" domain={[0, 100]} fontSize={11} tickLine={false} />
+                <YAxis stroke="#64748b" domain={[0, 10]} fontSize={11} tickLine={false} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#020617', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
                   itemStyle={{ color: '#22d3ee' }}
@@ -264,10 +248,10 @@ useEffect(() => {
 ) : (
   <div>
     <button 
-      onClick={() => navigate(`/interview/${item.id}`)}
+      onClick={() => navigate(item.status.toLowerCase() === 'coding' ? `/${item.id}/editor` : `/interview/${item.id}`)}
       className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
     >
-      <span>Resume Interview Node</span>
+      <span>{item.status.toLowerCase() === 'coding' ? 'Continue Coding Section' : 'Resume Interview Node'}</span>
       <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
     </button>
   </div>

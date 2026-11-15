@@ -1,61 +1,89 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import func
 
 from app.database.session import get_db
-from app.models.models import User, Interview, Resume
+from app.models.models import User, Interview, Resume, Result, Question, Answer
 from app.schemas.interview import InterviewCreate, InterviewResponse
 from app.core.deps import get_current_user
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
 
 @router.get("/stats/summary")
-async def get_user_interview_stats(
+def get_user_interview_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    total_sessions = db.query(func.count(Interview.id)).filter(Interview.user_id == current_user.id).scalar() or 0
-
-    completed_query = db.query(Interview).filter(
+    total_sessions = (
+        db.query(func.count(Interview.id))
+        .filter(Interview.user_id == current_user.id)
+        .scalar()
+        or 0
+    )
+    completed_filter = (
         Interview.user_id == current_user.id,
-        func.lower(Interview.status) == "completed"
+        func.lower(Interview.status) == "completed",
     )
-    completed_sessions_list = completed_query.all()
-    completed_count = len(completed_sessions_list)
-
-    # Safely extract score using getattr with a fallback of 50 if the column/attribute doesn't exist
-    processed_scores = [
-        getattr(i, 'score', 50) if getattr(i, 'score', 50) is not None else 50
-        for i in completed_sessions_list
-    ]
-
+    completed_count = (
+        db.query(func.count(Interview.id))
+        .filter(*completed_filter)
+        .scalar()
+        or 0
+    )
+    answer_scores = (
+        db.query(
+            Question.interview_id.label("interview_id"),
+            func.avg(Answer.score).label("score"),
+        )
+        .join(Answer, Answer.question_id == Question.id)
+        .group_by(Question.interview_id)
+        .subquery()
+    )
+    score_value = func.coalesce(Result.overall_score, answer_scores.c.score)
     avg_score = (
-        sum(processed_scores) / len(processed_scores) 
-        if processed_scores 
-        else 0.0
+        db.query(func.avg(score_value))
+        .select_from(Interview)
+        .outerjoin(Result, Result.interview_id == Interview.id)
+        .outerjoin(answer_scores, answer_scores.c.interview_id == Interview.id)
+        .filter(*completed_filter)
+        .scalar()
+        or 0.0
     )
-
+    trend_rows = (
+        db.query(
+            Interview.id,
+            Interview.job_role,
+            Interview.created_at,
+            score_value.label("score"),
+        )
+        .outerjoin(Result, Result.interview_id == Interview.id)
+        .outerjoin(answer_scores, answer_scores.c.interview_id == Interview.id)
+        .filter(*completed_filter, score_value.isnot(None))
+        .order_by(Interview.created_at.desc(), Interview.id.desc())
+        .limit(30)
+        .all()
+    )
     score_trends = [
         {
-            "id": i.id,
-            "job_role": i.job_role,
-            "score": getattr(i, 'score', 50) if getattr(i, 'score', 50) is not None else 50,
-            "date": i.created_at.strftime("%Y-%m-%d") if i.created_at else "2026-08-18"
+            "id": row.id,
+            "job_role": row.job_role,
+            "score": row.score,
+            "date": row.created_at.strftime("%Y-%m-%d") if row.created_at else "",
         }
-        for i in completed_sessions_list
+        for row in reversed(trend_rows)
     ]
 
     return {
         "total_sessions": total_sessions,
         "completed_sessions": completed_count,
-        "average_score": round(avg_score, 1),
+        "average_score": round(float(avg_score), 1),
         "score_trends": score_trends
     }
 
 
 @router.post("/", response_model=InterviewResponse, status_code=status.HTTP_201_CREATED)
-async def create_interview(
+def create_interview(
     payload: InterviewCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -85,16 +113,27 @@ async def create_interview(
     return new_interview
 
 @router.get("/", response_model=List[InterviewResponse])
-async def list_user_interviews(
+def list_user_interviews(
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Fetch only necessary fields or lightweight records for listing
-    interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
+    base_query = db.query(Interview).filter(Interview.user_id == current_user.id)
+    total_count = base_query.with_entities(func.count(Interview.id)).scalar() or 0
+    response.headers["X-Total-Count"] = str(total_count)
+    interviews = (
+        base_query
+        .order_by(Interview.created_at.desc(), Interview.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return interviews
 
 @router.get("/result/{id}")
-async def get_result(
+def get_result(
     id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

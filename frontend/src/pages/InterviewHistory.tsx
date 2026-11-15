@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/axios";
-import { History, ArrowRight, AlertCircle, FileText, CheckCircle2, Clock } from "lucide-react";
+import { History, ArrowRight, AlertCircle, FileText, Clock } from "lucide-react";
 import LoadingSpinner from "../components/LoadinSpinner";
 import SkillBadge from "../components/SkillBadge";
 
@@ -18,24 +18,40 @@ export function InterviewHistory() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
+  const pageSize = 20;
 
   useEffect(() => {
+    let cancelled = false;
     async function getHistory() {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await api.get("/interviews");
+        const response = await api.get("/interviews", {
+          params: { limit: pageSize, offset: page * pageSize },
+        });
         const responseData = response.data.data || response.data;
-        setInterviews(Array.isArray(responseData) ? responseData : []);
+        if (!cancelled) {
+          setInterviews(Array.isArray(responseData) ? responseData : []);
+          setTotalCount(Number(response.headers["x-total-count"] ?? responseData.length));
+        }
       } catch (e) {
         console.error(e);
-        setError("Failed to load interview history. Please verify your connection.");
+        if (!cancelled) {
+          setError("Failed to load interview history. Please verify your connection.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     getHistory();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
 
   if (loading) {
     return <LoadingSpinner message="Fetching simulation history records..." />;
@@ -70,7 +86,7 @@ export function InterviewHistory() {
         </div>
 
         <span className="text-xs font-mono font-bold text-slate-400 bg-slate-900/60 border border-slate-800/80 px-3.5 py-2 rounded-2xl shadow-inner self-start sm:self-auto">
-          {interviews.length} Total Records
+          {totalCount} Total Records
         </span>
       </div>
 
@@ -128,10 +144,24 @@ export function InterviewHistory() {
                 </div>
 
                 <button 
-                  onClick={() => navigate(`/interview/${interview.id}/result`)}
+                  onClick={() =>
+                    navigate(
+                      interview.status.toLowerCase() === "coding"
+                        ? `/${interview.id}/editor`
+                        : interview.status.toLowerCase() === "completed"
+                          ? `/interview/${interview.id}/result`
+                          : `/interview/${interview.id}`,
+                    )
+                  }
                   className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600 shrink-0"
                 >
-                  <span>View Diagnostic Report</span>
+                  <span>
+                    {interview.status.toLowerCase() === "coding"
+                      ? "Continue Coding Section"
+                      : interview.status.toLowerCase() === "completed"
+                        ? "View Diagnostic Report"
+                        : "Resume Interview"}
+                  </span>
                   <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
@@ -139,6 +169,30 @@ export function InterviewHistory() {
           </div>
         )}
       </div>
+
+      {totalCount > pageSize && (
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            disabled={page === 0 || loading}
+            className="rounded-xl border border-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-slate-500">
+            Page {page + 1} of {Math.max(1, Math.ceil(totalCount / pageSize))}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((current) => current + 1)}
+            disabled={(page + 1) * pageSize >= totalCount || loading}
+            className="rounded-xl border border-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
     </div>
   );
