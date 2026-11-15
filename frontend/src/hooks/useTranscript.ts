@@ -48,8 +48,8 @@ interface SpeechRecognitionConstructor {
 
 declare global {
   interface Window {
-    SpeechRecognition: SpeechRecognitionConstructor;
-    webkitSpeechRecognition: SpeechRecognitionConstructor;
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
   }
 }
 
@@ -59,6 +59,9 @@ export default function useTranscript() {
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const shouldListenRef = useRef(false);
+  const recognitionSupported =
+    typeof window !== "undefined" &&
+    Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const setTranscript = useCallback((value: string) => {
     transcriptRef.current = value;
@@ -69,12 +72,7 @@ export default function useTranscript() {
     const SpeechRecognitionCtor =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!SpeechRecognitionCtor) {
-      console.warn(
-        "Speech recognition is not supported or is blocked in this browser (e.g., Brave/Firefox)."
-      );
-      return;
-    }
+    if (!SpeechRecognitionCtor) return;
 
     // Mark that we intentionally want to keep listening
     shouldListenRef.current = true;
@@ -189,6 +187,7 @@ export default function useTranscript() {
     setTranscript,
     getTranscript,
     listening,
+    recognitionSupported,
     startListening,
     stopListening,
   };

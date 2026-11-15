@@ -30,6 +30,7 @@ export default function InterviewPage() {
     transcript,
     setTranscript,
     listening,
+    recognitionSupported,
     seconds,
     loading,
     initialLoading,
@@ -166,6 +167,7 @@ export default function InterviewPage() {
             transcript={transcript}
             onChange={setTranscript}
             listening={listening}
+            recognitionSupported={recognitionSupported}
           />
         </div>
       </div>
