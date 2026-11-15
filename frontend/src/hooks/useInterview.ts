@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import { api } from "../api/axios";
 import useSpeech from "./useSpeech";
 import useTranscript from "./useTranscript";
@@ -23,6 +24,13 @@ interface FinalResult {
   feedback_summary: string;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ detail?: string }>(error)) {
+    return error.response?.data?.detail || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function useInterview(
   stream: MediaStream | null,
   interviewId: string | undefined
@@ -31,6 +39,7 @@ export default function useInterview(
   const {
     transcript,
     setTranscript,
+    getTranscript,
     listening,
     startListening,
     stopListening,
@@ -48,17 +57,11 @@ export default function useInterview(
   const [error, setError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState(1);
   const [interviewStarted, setInterviewStarted] = useState(false);
-
-  const transcriptRef = useRef(transcript);
-  useEffect(() => {
-    transcriptRef.current = transcript;
-  }, [transcript]);
+  const [codingRequired, setCodingRequired] = useState(false);
 
   // Load first question from backend
   useEffect(() => {
     if (!interviewId) {
-      setError("No interview ID provided");
-      setInitialLoading(false);
       return;
     }
 
@@ -70,18 +73,19 @@ export default function useInterview(
         setError(null);
         const res = await api.post(`/interviews/${interviewId}/start`);
         if (cancelled) return;
-        if (res.data?.question) {
-          setCurrentQuestion(res.data.question);
-          setStatus("idle");
-          setQuestionCount(1);
+        if (res.data?.coding_required) {
+          setCodingRequired(true);
+          return;
         }
-      } catch (err: any) {
+        if (!res.data?.question) {
+          throw new Error("Interview did not return an opening question.");
+        }
+        setCurrentQuestion(res.data.question);
+        setStatus("idle");
+        setQuestionCount(1);
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(
-            err.response?.data?.detail ||
-              err.message ||
-              "Failed to start interview"
-          );
+          setError(getErrorMessage(err, "Failed to start interview"));
         }
       } finally {
         if (!cancelled) setInitialLoading(false);
@@ -160,21 +164,19 @@ export default function useInterview(
 
   // Submit transcript to backend and get next question / finish
   const stopAnswer = useCallback(async () => {
-    stopRecording();
-    stopListening();
-    timer.stop();
-    stopSpeech();
-
     if (!currentQuestion) {
       setStatus("paused");
       return;
     }
 
-    const answerText =
-      transcriptRef.current.trim() || "(No verbal answer provided)";
-
     setLoading(true);
     setStatus("paused");
+    stopRecording();
+    await stopListening();
+    timer.stop();
+    stopSpeech();
+
+    const answerText = getTranscript().trim() || "(No verbal answer provided)";
 
     try {
       const res = await api.post(
@@ -209,18 +211,15 @@ export default function useInterview(
         setCurrentQuestion(data.next_question);
         setStatus("reading");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Submit answer failed:", err);
-      setError(
-        err.response?.data?.detail ||
-          err.message ||
-          "Failed to submit answer"
-      );
+      setError(getErrorMessage(err, "Failed to submit answer"));
     } finally {
       setLoading(false);
     }
   }, [
     currentQuestion,
+    getTranscript,
     stopRecording,
     stopListening,
     stopSpeech,
@@ -244,10 +243,11 @@ export default function useInterview(
     recording,
     seconds: timer.seconds,
     loading,
-    initialLoading,
-    error,
+    initialLoading: Boolean(interviewId) && initialLoading,
+    error: interviewId ? error : "No interview ID provided",
     speaking,
     interviewStarted,
+    codingRequired,
     beginInterview,
     startAnswer,
     stopAnswer,

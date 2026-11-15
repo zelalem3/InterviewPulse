@@ -1,23 +1,25 @@
 interface Props {
-  recording: boolean;
+  answering: boolean;
   listening: boolean;
   onStart: () => void;
   onStop: () => void;
   onNext: () => void;
+  canSubmit: boolean;
   disabled?: boolean;
 }
 
 export default function Controls({
-  recording,
+  answering,
   listening,
   onStart,
   onStop,
   onNext,
+  canSubmit,
   disabled = false,
 }: Props) {
   return (
     <div className="flex flex-wrap gap-4 justify-center items-center">
-      {!recording ? (
+      {!answering ? (
         <button
           type="button"
           onClick={onStart}
@@ -39,7 +41,7 @@ export default function Controls({
       <button
         type="button"
         onClick={onNext}
-        disabled={disabled}
+        disabled={disabled || answering || !canSubmit}
         className="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold disabled:opacity-50"
       >
         Submit & Next

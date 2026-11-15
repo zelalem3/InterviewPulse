@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useCamera from "../hooks/useCamera";
 import useInterview from "../hooks/useInterview";
@@ -24,18 +25,24 @@ export default function InterviewPage() {
     transcript,
     setTranscript,
     listening,
-    recording,
     seconds,
     loading,
     initialLoading,
     error,
     speaking,
     interviewStarted,
+    codingRequired,
     beginInterview,
     startAnswer,
     stopAnswer,
     nextQuestion,
   } = useInterview(stream, interviewId);
+
+  useEffect(() => {
+    if (codingRequired && interviewId) {
+      navigate(`/${interviewId}/editor`, { replace: true });
+    }
+  }, [codingRequired, interviewId, navigate]);
 
   if (initialLoading) {
     return (
@@ -62,11 +69,13 @@ export default function InterviewPage() {
   if (status === "finished" && result) {
     return (
       <div className="mx-auto max-w-2xl p-8 text-center space-y-6">
-        <h1 className="text-2xl font-bold text-white">Interview Completed</h1>
+        <h1 className="text-2xl font-bold text-white">Verbal Interview Complete</h1>
         <p className="text-3xl font-mono text-amber-400">
           {Number(result.overall_score).toFixed(1)} / 10
         </p>
-        <p className="text-slate-300 text-sm">{result.feedback_summary}</p>
+        <p className="text-slate-300 text-sm">
+          Continue to the coding challenge to finish your interview and receive the complete evaluation.
+        </p>
         <div className="space-y-2 text-left max-h-64 overflow-y-auto">
           {conversation.map((item, i) => (
             <div key={i} className="rounded-xl border border-slate-800 p-3">
@@ -81,10 +90,10 @@ export default function InterviewPage() {
           ))}
         </div>
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(`/${interviewId}/editor`)}
           className="rounded-xl bg-cyan-500 px-5 py-2.5 font-bold text-slate-950"
         >
-          Dashboard
+          Continue to Coding Challenge
         </button>
       </div>
     );
@@ -163,11 +172,12 @@ export default function InterviewPage() {
         </div>
       ) : (
         <Controls
-          recording={recording}
+          answering={status === "recording"}
           listening={listening}
           onStart={startAnswer}
           onStop={stopAnswer}
           onNext={nextQuestion}
+          canSubmit={Boolean(transcript.trim())}
           disabled={loading}
         />
       )}

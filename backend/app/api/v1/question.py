@@ -23,14 +23,14 @@ FALLBACK_QUESTIONS = [
 
 def get_interview_history(interview_id: int, db: Session):
     questions = (
-        db.query(Question)
+        db.query(Question, Answer)
+        .outerjoin(Answer, Answer.question_id == Question.id)
         .filter(Question.interview_id == interview_id)
         .order_by(Question.sequence_number.asc())
         .all()
     )
     history = []
-    for q in questions:
-        ans = db.query(Answer).filter(Answer.question_id == q.id).first()
+    for q, ans in questions:
         history.append({
             "question": q.question_text,
             "answer": ans.answer_text if ans else None,
@@ -168,7 +168,7 @@ If interview_finished is true, include the evaluation and set next_question to n
 
 
 @router.post("/{interview_id}/start")
-async def start_interview(
+def start_interview(
     interview_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -180,6 +180,9 @@ async def start_interview(
     )
     if not interview:
         raise HTTPException(404, "Interview not found")
+
+    if interview.status.lower() == "coding":
+        return {"coding_required": True}
 
     resume = db.query(Resume).filter(Resume.id == interview.resume_id).first()
     resume_text = resume.extracted_data if resume else "No resume provided"
@@ -224,7 +227,7 @@ async def start_interview(
 
 
 @router.post("/questions/{question_id}/answer")
-async def submit_answer_and_proceed(
+def submit_answer_and_proceed(
     question_id: int,
     payload: dict,
     db: Session = Depends(get_db),
@@ -298,7 +301,7 @@ async def submit_answer_and_proceed(
     ai_finished = bool(result.get("interview_finished"))
 
     if force_finish or ai_finished:
-        interview.status = "completed"
+        interview.status = "coding"
         db.commit()
         return {
             "evaluation": {
@@ -318,7 +321,7 @@ async def submit_answer_and_proceed(
 
     next_q_data = result.get("next_question") or {}
     if not next_q_data.get("question_text"):
-        interview.status = "completed"
+        interview.status = "coding"
         db.commit()
         return {
             "evaluation": {

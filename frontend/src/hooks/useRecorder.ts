@@ -41,7 +41,9 @@ export default function useRecorder(stream: MediaStream | null) {
   const stopRecording = useCallback(() => {
     try {
       recorderRef.current?.stop();
-    } catch {}
+    } catch (error) {
+      console.warn("MediaRecorder stop failed:", error);
+    }
     recorderRef.current = null;
     setRecording(false);
   }, []);

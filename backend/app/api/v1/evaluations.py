@@ -9,6 +9,7 @@ from openai import OpenAI
 import time
 from google.genai.errors import ClientError, ServerError
 from groq import Groq
+from sqlalchemy import func
 
 from app.database.session import get_db
 from app.models.models import User, Interview, Question, Answer, Result, CodingQuestion, CodingAnswer
@@ -31,6 +32,35 @@ async def evaluate_interview(
     ).first()
     if not interview:
         raise HTTPException(status_code=404, detail="Interview session not found")
+
+    if interview.status.lower() not in {"coding", "completed"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Complete the verbal interview before viewing the final evaluation.",
+        )
+
+    if interview.status.lower() == "coding":
+        coding_question_count = (
+            db.query(func.count(CodingQuestion.id))
+            .filter(CodingQuestion.interview_id == interview.id)
+            .scalar()
+            or 0
+        )
+        submitted_code_count = (
+            db.query(func.count(CodingAnswer.id))
+            .join(CodingQuestion, CodingQuestion.id == CodingAnswer.question_id)
+            .filter(
+                CodingQuestion.interview_id == interview.id,
+                CodingAnswer.answer_text != "",
+            )
+            .scalar()
+            or 0
+        )
+        if not coding_question_count or submitted_code_count < coding_question_count:
+            raise HTTPException(
+                status_code=409,
+                detail="Complete the coding section before viewing the final evaluation.",
+            )
 
     # 2. Check if evaluation already exists
     existing_result = db.query(Result).filter(Result.interview_id == interview.id).first()
