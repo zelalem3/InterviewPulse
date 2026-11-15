@@ -13,8 +13,13 @@ export default function InterviewPage() {
   const { id: interviewId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { videoRef, stream, loading: cameraLoading, error: cameraError } =
-    useCamera();
+  const {
+    videoRef,
+    stream,
+    loading: cameraLoading,
+    error: cameraError,
+    audioError,
+  } = useCamera();
 
   const {
     currentQuestion,
@@ -119,6 +124,15 @@ export default function InterviewPage() {
               You can still type answers in the transcript box.
             </span>
           )}
+        </div>
+      )}
+
+      {audioError && (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-900 bg-amber-950/40 p-3 text-sm text-amber-200"
+        >
+          {audioError} You can still type answers in the transcript box.
         </div>
       )}
 

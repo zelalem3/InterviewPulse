@@ -143,10 +143,12 @@ export default function useInterview(
       startRecording();
     }
 
-    try {
-      startListening();
-    } catch (err) {
-      console.warn("Live transcript unavailable:", err);
+    if (stream?.getAudioTracks().length) {
+      try {
+        startListening();
+      } catch (err) {
+        console.warn("Live transcript unavailable:", err);
+      }
     }
 
     timer.reset(120);

@@ -1,48 +1,47 @@
 import os
-import uuid
-import asyncio
 import tempfile
+import uuid
+import wave
+from functools import lru_cache
+from pathlib import Path
+from threading import Lock
 
-import edge_tts
+from piper import PiperVoice
 
 
 OUTPUT_DIR = os.getenv(
     "TTS_OUTPUT_DIR",
     os.path.join(tempfile.gettempdir(), "interviewpulse-audio"),
 )
-
-os.makedirs(
-    OUTPUT_DIR,
-    exist_ok=True
+MODEL_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "tts"
+    / "models"
+    / "en_US-amy-medium.onnx"
 )
 
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-VOICE = "en-US-AriaNeural"
-
-
-async def _generate(text: str, output: str):
-    communicate = edge_tts.Communicate(
-        text=text,
-        voice=VOICE
-    )
-
-    await communicate.save(output)
+_synthesis_lock = Lock()
 
 
-def generate_audio(text: str):
+@lru_cache(maxsize=1)
+def _load_voice() -> PiperVoice:
+    return PiperVoice.load(MODEL_PATH)
 
-    filename = f"{uuid.uuid4()}.mp3"
 
-    output_path = os.path.join(
-        OUTPUT_DIR,
-        filename
-    )
-
-    asyncio.run(
-        _generate(
-            text,
-            output_path
-        )
-    )
+def generate_audio(text: str) -> str:
+    output_path = os.path.join(OUTPUT_DIR, f"{uuid.uuid4()}.wav")
+    try:
+        with _synthesis_lock:
+            voice = _load_voice()
+            with wave.open(output_path, "wb") as wav_file:
+                voice.synthesize_wav(text, wav_file)
+    except Exception:
+        try:
+            os.remove(output_path)
+        except FileNotFoundError:
+            pass
+        raise
 
     return output_path

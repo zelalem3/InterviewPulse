@@ -7,6 +7,7 @@ export default function useCamera() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [audioError, setAudioError] = useState("");
   const [hasAudio, setHasAudio] = useState(false);
 
   // Keep a stable reference to the video element
@@ -27,18 +28,43 @@ export default function useCamera() {
 
     const initializeCamera = async () => {
       try {
-        // First check available devices (optional but useful for debugging)
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const microphoneExists = devices.some((d) => d.kind === "audioinput");
+        const video = {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user" as const,
+        };
+        let mediaStream: MediaStream;
+        let microphoneError = "";
 
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
-          audio: microphoneExists,
-        });
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video,
+            audio: true,
+          });
+        } catch (err) {
+          if (
+            !(err instanceof DOMException) ||
+            ![
+              "NotAllowedError",
+              "NotFoundError",
+              "NotReadableError",
+              "OverconstrainedError",
+            ].includes(err.name)
+          ) {
+            throw err;
+          }
+
+          microphoneError =
+            err.name === "NotAllowedError"
+              ? "Microphone access was denied. Allow microphone access in browser settings to answer by voice."
+              : err.name === "NotFoundError"
+                ? "Your browser could not find an available microphone. Check the selected input device and site permission, then reload."
+                : "The microphone is unavailable. Check its browser permission and try again.";
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video,
+            audio: false,
+          });
+        }
 
         if (!isMounted) {
           // Component unmounted while waiting for permission
@@ -48,7 +74,12 @@ export default function useCamera() {
 
         streamRef.current = mediaStream;
         setStream(mediaStream);
-        setHasAudio(mediaStream.getAudioTracks().length > 0);
+        const hasAudioTrack = mediaStream.getAudioTracks().length > 0;
+        setHasAudio(hasAudioTrack);
+        setAudioError(
+          microphoneError ||
+            (hasAudioTrack ? "" : "No microphone audio track is available.")
+        );
 
         // Attach to video element if it already exists
         if (videoRef.current) {
@@ -99,6 +130,7 @@ export default function useCamera() {
     stream,
     loading,
     error,
+    audioError,
     hasAudio,
   };
 }
