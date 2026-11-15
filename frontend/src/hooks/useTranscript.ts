@@ -1,7 +1,5 @@
-// src/hooks/useTranscript.ts
 import { useState, useCallback, useRef } from "react";
 
-// Minimal type definitions for the Web Speech API
 interface SpeechRecognitionAlternative {
   readonly transcript: string;
   readonly confidence: number;
@@ -60,6 +58,7 @@ export default function useTranscript() {
   const transcriptRef = useRef("");
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const shouldListenRef = useRef(false);
 
   const setTranscript = useCallback((value: string) => {
     transcriptRef.current = value;
@@ -77,8 +76,13 @@ export default function useTranscript() {
       return;
     }
 
+    // Mark that we intentionally want to keep listening
+    shouldListenRef.current = true;
+
+    // Clean up any previous instance
     if (recognitionRef.current) {
       try {
+        recognitionRef.current.onend = null; // prevent unwanted restart
         recognitionRef.current.stop();
       } catch {
         // Ignore cleanup errors
@@ -103,18 +107,37 @@ export default function useTranscript() {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === "not-allowed") {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         console.warn(
           "Speech recognition blocked by browser security. Falling back to manual text input."
         );
-      } else {
-        console.warn("Speech recognition error:", event.error);
+        shouldListenRef.current = false;
+        setListening(false);
+        return;
       }
-      setListening(false);
+
+      // "no-speech", "aborted", "network", etc. — we usually want to keep going
+      console.warn("Speech recognition error:", event.error);
+      // Don't set listening = false here; onend will handle restart logic
     };
 
     recognition.onend = () => {
-      setListening(false);
+      // Only restart if the user is still supposed to be answering
+      if (shouldListenRef.current && recognitionRef.current === recognition) {
+        try {
+          // Small delay helps avoid "already started" race conditions in some browsers
+          setTimeout(() => {
+            if (shouldListenRef.current && recognitionRef.current === recognition) {
+              recognition.start();
+            }
+          }, 150);
+        } catch (err) {
+          console.warn("Failed to restart speech recognition:", err);
+          setListening(false);
+        }
+      } else {
+        setListening(false);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -124,12 +147,16 @@ export default function useTranscript() {
     } catch (err) {
       console.warn("Failed to start speech recognition:", err);
       setListening(false);
+      shouldListenRef.current = false;
     }
   }, [setTranscript]);
 
   const getTranscript = useCallback(() => transcriptRef.current, []);
 
   const stopListening = useCallback((): Promise<void> => {
+    // Tell onend not to restart
+    shouldListenRef.current = false;
+
     const recognition = recognitionRef.current;
     if (!recognition) {
       setListening(false);
@@ -138,9 +165,12 @@ export default function useTranscript() {
 
     return new Promise((resolve) => {
       const handleEnd = recognition.onend;
+
       recognition.onend = (event) => {
+        // Call original handler if it existed
         handleEnd?.call(recognition, event);
         recognitionRef.current = null;
+        setListening(false);
         resolve();
       };
 
