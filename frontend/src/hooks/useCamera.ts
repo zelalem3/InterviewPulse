@@ -39,11 +39,7 @@ export default function useCamera() {
         try {
           mediaStream = await navigator.mediaDevices.getUserMedia({
             video,
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
+            audio: true,
           });
         } catch (err) {
           if (
@@ -62,7 +58,7 @@ export default function useCamera() {
             err.name === "NotAllowedError"
               ? "Microphone access was denied. Allow microphone access in browser settings to answer by voice."
               : err.name === "NotFoundError"
-                ? "No microphone was found. Connect or enable a microphone to answer by voice."
+                ? "Your browser could not find an available microphone. Check the selected input device and site permission, then reload."
                 : "The microphone is unavailable. Check its browser permission and try again.";
           mediaStream = await navigator.mediaDevices.getUserMedia({
             video,
