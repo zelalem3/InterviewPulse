@@ -1,11 +1,15 @@
 import os
 import uuid
 import asyncio
+import tempfile
 
 import edge_tts
 
 
-OUTPUT_DIR = "/app/tts/audio"
+OUTPUT_DIR = os.getenv(
+    "TTS_OUTPUT_DIR",
+    os.path.join(tempfile.gettempdir(), "interviewpulse-audio"),
+)
 
 os.makedirs(
     OUTPUT_DIR,
