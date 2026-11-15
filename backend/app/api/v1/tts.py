@@ -27,7 +27,7 @@ def generate(request: TTSRequest):
 
     return FileResponse(
         audio_path,
-        media_type="audio/mpeg",
-        filename="interview.mp3",
+        media_type="audio/wav",
+        filename="interview.wav",
         background=BackgroundTask(os.remove, audio_path),
     )

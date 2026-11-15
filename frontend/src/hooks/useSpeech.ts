@@ -40,7 +40,7 @@ export default function useSpeech() {
           );
           if (requestId !== requestIdRef.current) return;
 
-          const blob = new Blob([res.data], { type: "audio/mpeg" });
+          const blob = new Blob([res.data], { type: "audio/wav" });
           const url = URL.createObjectURL(blob);
           urlRef.current = url;
 
