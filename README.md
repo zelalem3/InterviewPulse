@@ -56,6 +56,8 @@ Practice in an environment closer to a real interview.
 
 The video mode is designed to help candidates practice not only their technical knowledge, but also their ability to communicate under realistic interview conditions.
 
+**Browser note:** Speech-to-text requires the Web Speech `SpeechRecognition` API. Firefox support is version-dependent (Firefox 160+); Chrome and Edge also support it. If speech recognition is unavailable in your browser, InterviewPulse falls back to typed answers.
+
 ---
 
 ## 🧠 Adaptive AI Interviewer
@@ -449,7 +451,10 @@ SECRET_KEY=your-secret-key
 
 AI_API_KEY=your-api-key
 GEMINI_API_KEY=your-gemini-api-key
+OPENROUTER_API_KEY=your-openrouter-api-key
 ```
+
+Video interview questions use Gemini Flash-Lite on the free tier, with OpenRouter's free model as a fallback. The defaults can be changed with `GEMINI_MODEL` and `OPENROUTER_MODEL`. Start a new interview to get a newly generated opening question; existing questions are saved with their interview.
 
 Never commit `.env` or API keys to the repository.
 
