@@ -457,6 +457,20 @@ Never commit `.env` or API keys to the repository.
 
 # 🐳 Running with Docker
 
+### Download the local Kokoro voice model
+
+The backend uses Kokoro-82M locally for spoken interview questions. Download its model and voice files once before starting the app:
+
+```bash
+mkdir -p backend/tts/models
+curl -fL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx \
+  -o backend/tts/models/kokoro-v1.0.onnx
+curl -fL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin \
+  -o backend/tts/models/voices-v1.0.bin
+```
+
+These model files are ignored by Git and must be downloaded separately on each deployment. They require a few hundred megabytes of disk space. Kokoro inference runs on your backend; no speech API key or credit card is needed.
+
 Build and start the application:
 
 ```bash
