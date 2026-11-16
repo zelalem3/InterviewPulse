@@ -2,20 +2,13 @@ import os
 import json
 import time
 import requests
-from typing import Optional
-
-# Optional imports – handled gracefully if missing
-try:
-    from groq import Groq
-except ImportError:
-    Groq = None
 
 try:
-    import google.generativeai as genai
-    from google.api_core.exceptions import ResourceExhausted
+    from google import genai
+    from google.genai import types
 except ImportError:
     genai = None
-    ResourceExhausted = Exception
+    types = None
 
 
 class LLMError(Exception):
@@ -30,34 +23,13 @@ def _parse_json(text: str) -> dict:
 
 # ---------- Providers ----------
 
-def _call_groq(prompt: str) -> dict:
-    if Groq is None:
-        raise LLMError("groq package not installed")
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise LLMError("GROQ_API_KEY not set")
-
-    client = Groq(api_key=api_key)
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",  # or llama-3.1-8b-instant
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
-        response_format={"type": "json_object"},
-    )
-    return _parse_json(response.choices[0].message.content)
-
-
 def _call_openrouter(prompt: str) -> dict:
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise LLMError("OPENROUTER_API_KEY not set")
 
-    # Free models – try a couple if one fails
     models = [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "meta-llama/llama-3.1-8b-instruct:free",
-        "google/gemma-2-9b-it:free",
-        "mistralai/mistral-7b-instruct:free",
+        os.getenv("OPENROUTER_MODEL", "inclusionai/ling-3.2-flash:free"),
     ]
 
     last_err = None
@@ -75,6 +47,7 @@ def _call_openrouter(prompt: str) -> dict:
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.4,
+                    "response_format": {"type": "json_object"},
                 },
                 timeout=90,
             )
@@ -82,7 +55,16 @@ def _call_openrouter(prompt: str) -> dict:
                 last_err = f"OpenRouter 429 on {model}"
                 time.sleep(2)
                 continue
-            r.raise_for_status()
+            if not r.ok:
+                try:
+                    error_detail = r.json().get("error", {}).get("message")
+                except ValueError:
+                    error_detail = None
+                last_err = (
+                    f"OpenRouter HTTP {r.status_code}: "
+                    f"{error_detail or r.text[:500]}"
+                )
+                continue
             content = r.json()["choices"][0]["message"]["content"]
             return _parse_json(content)
         except Exception as e:
@@ -94,35 +76,26 @@ def _call_openrouter(prompt: str) -> dict:
 
 def _call_gemini(prompt: str) -> dict:
     if genai is None:
-        raise LLMError("google-generativeai not installed")
+        raise LLMError("google-genai package not installed")
+    if types is None:
+        raise LLMError("google-genai types are unavailable")
 
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise LLMError("GEMINI_API_KEY not set")
 
-    genai.configure(api_key=api_key)
-
-    models = [
-        "models/gemini-2.0-flash",
-        "models/gemini-1.5-flash",
-        "models/gemini-1.5-flash-8b",
-    ]
-
-    last_err = None
-    for model_name in models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            return _parse_json(response.text)
-        except ResourceExhausted as e:
-            last_err = e
-            time.sleep(5)
-            continue
-        except Exception as e:
-            last_err = e
-            continue
-
-    raise LLMError(f"Gemini failed: {last_err}")
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite"),
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.4,
+        ),
+    )
+    if not response.text:
+        raise LLMError("Gemini returned an empty response")
+    return _parse_json(response.text)
 
 
 # ---------- Public API ----------
@@ -130,12 +103,11 @@ def _call_gemini(prompt: str) -> dict:
 def call_llm(prompt: str, max_retries: int = 1) -> dict:
     """
     Try providers in order until one succeeds.
-    Order: Groq → OpenRouter → Gemini
+    Order: Gemini → OpenRouter (free models)
     """
     providers = [
-        ("Groq", _call_groq),
-        ("OpenRouter", _call_openrouter),
         ("Gemini", _call_gemini),
+        ("OpenRouter", _call_openrouter),
     ]
 
     errors = []
