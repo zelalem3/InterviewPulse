@@ -56,6 +56,8 @@ Practice in an environment closer to a real interview.
 
 The video mode is designed to help candidates practice not only their technical knowledge, but also their ability to communicate under realistic interview conditions.
 
+**Browser note:** Speech-to-text requires the Web Speech `SpeechRecognition` API. Firefox support is version-dependent (Firefox 160+); Chrome and Edge also support it. If speech recognition is unavailable in your browser, InterviewPulse falls back to typed answers.
+
 ---
 
 ## 🧠 Adaptive AI Interviewer
@@ -449,13 +451,30 @@ SECRET_KEY=your-secret-key
 
 AI_API_KEY=your-api-key
 GEMINI_API_KEY=your-gemini-api-key
+OPENROUTER_API_KEY=your-openrouter-api-key
 ```
+
+Video interview questions use Gemini Flash-Lite on the free tier, with OpenRouter's free model as a fallback. The defaults can be changed with `GEMINI_MODEL` and `OPENROUTER_MODEL`. Start a new interview to get a newly generated opening question; existing questions are saved with their interview.
 
 Never commit `.env` or API keys to the repository.
 
 ---
 
 # 🐳 Running with Docker
+
+### Download the local Kokoro voice model
+
+The backend uses Kokoro-82M locally for spoken interview questions. Download its model and voice files once before starting the app:
+
+```bash
+mkdir -p backend/tts/models
+curl -fL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx \
+  -o backend/tts/models/kokoro-v1.0.onnx
+curl -fL https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin \
+  -o backend/tts/models/voices-v1.0.bin
+```
+
+These model files are ignored by Git and must be downloaded separately on each deployment. They require a few hundred megabytes of disk space. Kokoro inference runs on your backend; no speech API key or credit card is needed.
 
 Build and start the application:
 

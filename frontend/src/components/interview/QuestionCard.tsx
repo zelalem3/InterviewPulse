@@ -32,6 +32,7 @@ export default function QuestionCard({
             rounded-xl
             border
             bg-white
+            text-black
             p-6
             shadow
         ">
