@@ -42,6 +42,7 @@ export default function InterviewPage() {
     startAnswer,
     stopAnswer,
     nextQuestion,
+    speak,
   } = useInterview(stream, interviewId);
 
   useEffect(() => {
@@ -151,7 +152,7 @@ export default function InterviewPage() {
           current={questionCount}
           total={8}
           speaking={speaking}
-          onReplay={() => {}}
+          onReplay={() => speak(currentQuestion.question_text)}
         />
       )}
 
