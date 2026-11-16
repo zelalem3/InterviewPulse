@@ -41,6 +41,7 @@ export default function useInterview(
     setTranscript,
     getTranscript,
     listening,
+    recognitionSupported,
     startListening,
     stopListening,
   } = useTranscript();
@@ -242,6 +243,7 @@ export default function useInterview(
     transcript,
     setTranscript,
     listening,
+    recognitionSupported,
     recording,
     seconds: timer.seconds,
     loading,
