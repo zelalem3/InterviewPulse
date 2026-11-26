@@ -3,8 +3,10 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuthStore } from './store/authStore';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Login = lazy(() => import('./pages/Login'));
 const NewInterview = lazy(() => import('./pages/NewInterview'));
 const InterviewRoom = lazy(() => import('./pages/InterviewRoom'));
@@ -23,6 +25,11 @@ const InterviewResult = lazy(() =>
 );
 const InterviewPage = lazy(() => import('./pages/InterviewPage'));
 const Settings = lazy(() => import('./pages/settings'));
+
+function HomePage() {
+  const token = useAuthStore((state) => state.token);
+  return token ? <Dashboard /> : <LandingPage />;
+}
 
 function Layout() {
   return (
@@ -43,7 +50,7 @@ function Layout() {
           <Route path="/login" element={<Login />} />
 
           {/* --- PROTECTED ROUTES --- */}
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/interview/new" element={<ProtectedRoute><NewInterview /></ProtectedRoute>} />
           <Route path="/interview/:id" element={<ProtectedRoute><InterviewRoom /></ProtectedRoute>} />
           <Route path="/:interview_id/editor" element={<ProtectedRoute><CodeEditor /></ProtectedRoute>} />
