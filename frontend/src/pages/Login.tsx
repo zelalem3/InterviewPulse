@@ -128,11 +128,11 @@ const Login = () => {
             </div>
 
             <h1 className="text-3xl font-black tracking-tight text-white">
-              Welcome Back
+              Good to see you again
             </h1>
 
             <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-400">
-              Sign in to continue your interview practice journey.
+              Sign in to pick up your interview practice.
             </p>
           </div>
 
@@ -172,7 +172,7 @@ const Login = () => {
                 htmlFor="email"
                 className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-slate-400"
               >
-                Email Address
+                Email
               </label>
 
               <div
@@ -196,9 +196,10 @@ const Login = () => {
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
+                  placeholder="you@example.com"
                   className="
                     h-14
                     w-full
@@ -217,26 +218,13 @@ const Login = () => {
 
             {/* Password */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2">
                 <label
                   htmlFor="password"
                   className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400"
                 >
                   Password
                 </label>
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/forgot-password")}
-                  className="
-                    text-xs font-bold
-                    text-blue-400
-                    transition-colors
-                    hover:text-cyan-300
-                  "
-                >
-                  Forgot?
-                </button>
               </div>
 
               <div
@@ -260,6 +248,7 @@ const Login = () => {
                 <input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -311,11 +300,11 @@ const Login = () => {
                     size={18}
                     className="animate-spin"
                   />
-                  Signing In...
+                  Signing in...
                 </>
               ) : (
                 <>
-                  Sign In
+                  Sign in
 
                   <ArrowRight
                     size={18}
@@ -326,22 +315,11 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="my-7 flex items-center gap-4">
-            <div className="h-px flex-1 bg-slate-800" />
-
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-              Or
-            </span>
-
-            <div className="h-px flex-1 bg-slate-800" />
-          </div>
-
-          {/* Footer */}
-          <div className="text-center">
+          <div className="mt-7 text-center">
             <p className="text-sm font-medium text-slate-500">
-              Don't have an account?
+              New to InterviewPulse?
               <button
+                type="button"
                 onClick={() => navigate("/register")}
                 className="
                   ml-1.5
@@ -351,7 +329,7 @@ const Login = () => {
                   hover:text-cyan-300
                 "
               >
-                Request Access
+                Create an account
               </button>
             </p>
           </div>

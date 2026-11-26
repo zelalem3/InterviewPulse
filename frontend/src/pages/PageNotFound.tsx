@@ -16,13 +16,13 @@ export function PageNotFound() {
         {/* Error Details */}
         <div className="space-y-2">
           <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-900/60 px-3 py-1 rounded-full uppercase tracking-widest">
-            Error 404 • Node Not Found
+            Error 404
           </span>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            Page Not Found
+            We couldn’t find that page
           </h1>
           <p className="text-xs font-semibold text-slate-400 leading-relaxed max-w-xs mx-auto">
-            The requested simulation resource or endpoint path does not exist or has been decommissioned.
+            The link may be out of date, or the address may have a typo. Head back home and try again.
           </p>
         </div>
 
@@ -33,7 +33,7 @@ export function PageNotFound() {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-300 font-bold rounded-2xl text-xs transition shadow-inner cursor-pointer select-none"
           >
             <ArrowLeft size={16} />
-            <span>Go Back</span>
+            <span>Go back</span>
           </button>
 
           <Link
@@ -41,7 +41,7 @@ export function PageNotFound() {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-white font-bold rounded-2xl text-xs transition shadow-lg cursor-pointer select-none"
           >
             <Home size={16} className="text-emerald-400" />
-            <span>Dashboard</span>
+            <span>Home</span>
           </Link>
         </div>
 
