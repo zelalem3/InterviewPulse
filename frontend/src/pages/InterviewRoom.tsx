@@ -103,7 +103,7 @@ export default function InterviewRoom() {
   };
 
   if (initialLoading) {
-    return <LoadingSpinner message="Initializing AI simulation environment..." />;
+    return <LoadingSpinner message="Getting your interview ready..." />;
   }
 
   return (

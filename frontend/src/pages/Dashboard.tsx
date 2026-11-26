@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/axios';
 import { useAuthStore } from '../store/authStore';
-import { PlusCircle, Sparkles, ArrowRight, ShieldCheck, Clock, Layers, Award, Terminal, TrendingUp } from 'lucide-react';
+import { PlusCircle, Sparkles, ArrowRight, Layers, Award, Terminal, TrendingUp } from 'lucide-react';
 import LoadingSpinner from '../components/LoadinSpinner'; 
 import SkillBadge from '../components/SkillBadge';          
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -62,30 +62,32 @@ useEffect(() => {
 }, []);
 
   if (loading) {
-    return <LoadingSpinner message="Syncing interview pipeline records..." />;
+    return <LoadingSpinner message="Loading your interviews..." />;
   }
 
   const displayTotalSessions = stats ? stats.total_sessions : interviews.length;
+  const completedSessions = stats
+    ? stats.completed_sessions
+    : interviews.filter((interview) => interview.status.toLowerCase() === 'completed').length;
   const displayAvgScore = stats && stats.average_score > 0 ? stats.average_score : '--';
   const chartData = stats?.score_trends || [];
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 font-sans">
       
-      {/* --- HERO / WELCOME BANNER --- */}
       <div className="relative overflow-hidden bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="space-y-2 z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-950 border border-slate-800 rounded-full text-xs font-bold text-slate-300 shadow-inner">
             <Sparkles size={14} className="text-emerald-400" />
-            <span>Operational Dashboard</span>
+            <span>Your practice space</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Welcome back, {user?.name || 'Operator'}
+            Welcome back{user?.name ? `, ${user.name}` : ''}
           </h1>
           <p className="text-xs sm:text-sm font-semibold text-slate-400 max-w-xl">
-            Your simulation pipeline is live. Review past technical session metrics or initialize a new AI-evaluated interview node.
+            Interview confidence comes with practice. Pick up where you left off or start a session for the role you have in mind.
           </p>
         </div>
 
@@ -94,65 +96,54 @@ useEffect(() => {
           className="z-10 flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg cursor-pointer select-none shrink-0"
         >
           <PlusCircle size={18} className="text-emerald-400" />
-          <span>Start New Interview</span>
+          <span>Start a new interview</span>
         </button>
       </div>
 
-      {/* --- METRICS & OVERVIEW SECTION --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Sessions</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Practice sessions</span>
             <Layers size={18} className="text-slate-500" />
           </div>
           <p className="text-2xl font-black text-white font-mono">{displayTotalSessions}</p>
-          <p className="text-[10px] font-semibold text-slate-500">Evaluated candidate logs</p>
+          <p className="text-[10px] font-semibold text-slate-500">Interviews started</p>
         </div>
 
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Avg Score</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Average score</span>
             <Award size={18} className="text-amber-400" />
           </div>
           <p className="text-2xl font-black text-amber-400 font-mono">{displayAvgScore}</p>
-          <p className="text-[10px] font-semibold text-slate-500">Overall evaluation metric</p>
+          <p className="text-[10px] font-semibold text-slate-500">Across completed interviews</p>
         </div>
 
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">System State</span>
-            <ShieldCheck size={18} className="text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-wider">Completed</span>
+            <Award size={18} className="text-emerald-400" />
           </div>
-          <p className="text-2xl font-black text-emerald-400">Optimal</p>
-          <p className="text-[10px] font-semibold text-slate-500">Sanctum token authenticated</p>
-        </div>
-
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">AI Model Core</span>
-            <Clock size={18} className="text-cyan-400" />
-          </div>
-          <p className="text-2xl font-black text-white font-mono">Gemini</p>
-          <p className="text-[10px] font-semibold text-slate-500">Low-latency simulation active</p>
+          <p className="text-2xl font-black text-emerald-400 font-mono">{completedSessions}</p>
+          <p className="text-[10px] font-semibold text-slate-500">Ready to review</p>
         </div>
       </div>
 
-      {/* --- PERFORMANCE TREND GRAPH CARD --- */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wider">Performance Trajectory</h2>
-            <p className="text-xs font-semibold text-slate-400">AI evaluation score progression across completed technical sessions.</p>
+            <h2 className="text-base font-bold text-white">Score over time</h2>
+            <p className="text-xs font-semibold text-slate-400">A simple view of your results from completed interviews.</p>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-400 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl shadow-inner">
             <TrendingUp size={14} />
-            <span>Telemetry Feed</span>
+            <span>Your progress</span>
           </div>
         </div>
 
         {chartData.length === 0 ? (
           <div className="text-center py-10 text-slate-500 text-xs font-medium">
-            Complete at least one interview session to generate telemetry trajectory charts.
+            Your scores will appear here after you complete an interview.
           </div>
         ) : (
           <div className="h-64 w-full pt-2">
@@ -178,15 +169,14 @@ useEffect(() => {
         )}
       </div>
 
-      {/* --- PAST INTERVIEWS LIST --- */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wider">Past Interview History</h2>
-            <p className="text-xs font-semibold text-slate-400">Select any record to view deep diagnostic evaluations and logs.</p>
+            <h2 className="text-base font-bold text-white">Recent interviews</h2>
+            <p className="text-xs font-semibold text-slate-400">Continue an interview or revisit feedback from a completed session.</p>
           </div>
           <span className="text-xs font-mono font-bold text-slate-400 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl shadow-inner">
-            {interviews.length} Records Found
+            {interviews.length} {interviews.length === 1 ? 'interview' : 'interviews'}
           </span>
         </div>
 
@@ -196,9 +186,9 @@ useEffect(() => {
               <Terminal size={22} />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-bold text-slate-200">No simulation runs detected</p>
+              <p className="text-sm font-bold text-slate-200">Your first practice session starts here</p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Your pipeline is clear. Initialize your first mock interview node to start collecting AI diagnostic metrics.
+                Add your resume and the role you’re preparing for. We’ll take it from there, one question at a time.
               </p>
             </div>
             <button
@@ -206,7 +196,7 @@ useEffect(() => {
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 font-bold rounded-xl text-xs transition cursor-pointer select-none"
             >
               <PlusCircle size={15} />
-              <span>Initialize First Node</span>
+              <span>Set up an interview</span>
             </button>
           </div>
         ) : (
@@ -241,7 +231,7 @@ useEffect(() => {
       onClick={() => navigate(`/interview/${item.id}/result`)}
       className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
     >
-      <span>View Diagnostic Report</span>
+      <span>View feedback</span>
       <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
     </button>
   </div>
@@ -251,7 +241,7 @@ useEffect(() => {
       onClick={() => navigate(item.status.toLowerCase() === 'coding' ? `/${item.id}/editor` : `/interview/${item.id}`)}
       className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer select-none group-hover:border-slate-600"
     >
-      <span>{item.status.toLowerCase() === 'coding' ? 'Continue Coding Section' : 'Resume Interview Node'}</span>
+      <span>{item.status.toLowerCase() === 'coding' ? 'Continue coding' : 'Continue interview'}</span>
       <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
     </button>
   </div>
