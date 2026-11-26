@@ -34,6 +34,7 @@ const Navbar: React.FC = () => {
         <button
           onClick={() => navigate('/')}
           className="group flex items-center"
+          aria-label="InterviewPulse home"
         >
           <InterviewPulseLogo compact={false} />
         </button>
@@ -101,13 +102,25 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <>
+              <a
+                href="/#how-it-works"
+                className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 md:inline-flex"
+              >
+                How it works
+              </a>
+              <a
+                href="/#practice-modes"
+                className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:inline-flex"
+              >
+                Practice modes
+              </a>
               {/* Sign In */}
               <button
                 onClick={() => navigate('/login')}
                 className="group flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/60 px-5 py-2.5 text-sm font-bold text-slate-300 transition-all duration-200 hover:border-slate-700 hover:bg-slate-900 hover:text-white"
               >
                 <ArrowRight size={16} className="text-cyan-400 transition-transform group-hover:translate-x-0.5" />
-                Sign In
+                Sign in
               </button>
 
               {/* Get Started */}
@@ -116,7 +129,7 @@ const Navbar: React.FC = () => {
                 className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/30"
               >
                 <UserPlus size={16} className="transition-transform group-hover:scale-110" />
-                Get Started
+                Get started
               </button>
             </>
           )}

@@ -54,7 +54,7 @@ export function InterviewHistory() {
   }, [page]);
 
   if (loading) {
-    return <LoadingSpinner message="Fetching simulation history records..." />;
+    return <LoadingSpinner message="Loading your interview history..." />;
   }
 
   if (error) {
@@ -78,15 +78,15 @@ export function InterviewHistory() {
             <div className="w-8 h-8 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-300 shadow-inner">
               <History size={18} />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight">Interview History & Logs</h1>
+            <h1 className="text-xl font-black text-white tracking-tight">Interview history</h1>
           </div>
           <p className="text-xs font-semibold text-slate-400">
-            Comprehensive audit logs of all past simulation sessions, job specifications, and analytics.
+            Pick up an unfinished session or revisit feedback from an interview you’ve completed.
           </p>
         </div>
 
         <span className="text-xs font-mono font-bold text-slate-400 bg-slate-900/60 border border-slate-800/80 px-3.5 py-2 rounded-2xl shadow-inner self-start sm:self-auto">
-          {totalCount} Total Records
+          {totalCount} {totalCount === 1 ? "interview" : "interviews"}
         </span>
       </div>
 
@@ -97,15 +97,15 @@ export function InterviewHistory() {
             <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mx-auto text-slate-500 shadow-inner">
               <FileText size={22} />
             </div>
-            <p className="text-sm font-bold text-slate-300">No interview history detected.</p>
+            <p className="text-sm font-bold text-slate-300">No interviews yet</p>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              You haven't completed any simulated evaluations yet. Initialize a session to populate audit records.
+              Your sessions will show up here. Start with the role you’re preparing for and practice whenever you’re ready.
             </p>
             <button
               onClick={() => navigate('/interview/new')}
               className="mt-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer select-none"
             >
-              Start First Interview
+              Set up your first interview
             </button>
           </div>
         ) : (
@@ -159,7 +159,7 @@ export function InterviewHistory() {
                     {interview.status.toLowerCase() === "coding"
                       ? "Continue Coding Section"
                       : interview.status.toLowerCase() === "completed"
-                        ? "View Diagnostic Report"
+                        ? "View feedback"
                         : "Resume Interview"}
                   </span>
                   <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />

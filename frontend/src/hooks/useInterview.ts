@@ -124,11 +124,17 @@ export default function useInterview(
     setStatus("reading");
   }, [currentQuestion]);
 
-  // Start answering — STT optional (user can type if mic blocked)
+  // Speech recognition is optional; answers can still be typed when it is unavailable.
   const startAnswer = useCallback(() => {
     if (!currentQuestion) {
       console.warn("No current question");
       return;
+    }
+
+    try {
+      startListening();
+    } catch (err) {
+      console.warn("Live transcript unavailable:", err);
     }
 
     if (!interviewStarted) {
@@ -140,16 +146,8 @@ export default function useInterview(
     setStatus("recording");
     setTranscript("");
 
-    if (stream) {
-      startRecording();
-    }
-
-    if (stream?.getAudioTracks().length) {
-      try {
-        startListening();
-      } catch (err) {
-        console.warn("Live transcript unavailable:", err);
-      }
+    if (stream && !startRecording()) {
+      setError("Camera recording couldn't start. You can still type your answer.");
     }
 
     timer.reset(120);
@@ -167,17 +165,17 @@ export default function useInterview(
 
   // Submit transcript to backend and get next question / finish
   const stopAnswer = useCallback(async () => {
-    if (!currentQuestion) {
-      setStatus("paused");
-      return;
-    }
-
-    setLoading(true);
     setStatus("paused");
     stopRecording();
     await stopListening();
     timer.stop();
     stopSpeech();
+
+    if (!currentQuestion) {
+      return;
+    }
+
+    setLoading(true);
 
     const answerText = getTranscript().trim() || "(No verbal answer provided)";
 

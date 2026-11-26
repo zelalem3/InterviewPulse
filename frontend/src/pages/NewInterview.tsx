@@ -1,6 +1,7 @@
 // src/pages/NewInterview.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { api } from "../api/axios";
 import {
   FileUp,
@@ -27,7 +28,7 @@ export default function NewInterview() {
     e.preventDefault();
 
     if (!file || !jobRole.trim()) {
-      setErrorMessage("Please provide both a target job role and a resume PDF.");
+      setErrorMessage("Add the role you’re preparing for and choose your resume to continue.");
       return;
     }
 
@@ -75,13 +76,15 @@ export default function NewInterview() {
       } else {
         navigate(`/interview/${interviewId}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      const backendMessage =
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to initialize interview session.";
+      const backendMessage = isAxiosError<{ detail?: string; message?: string }>(error)
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
+        : error instanceof Error
+          ? error.message
+          : "We couldn’t start your interview. Please try again.";
       setErrorMessage(backendMessage);
     } finally {
       setIsLoading(false);
@@ -97,10 +100,10 @@ export default function NewInterview() {
         </div>
         <div className="space-y-1">
           <h1 className="text-xl font-black text-white tracking-tight">
-            Start New Interview
+            Set up a practice interview
           </h1>
           <p className="text-xs font-semibold text-slate-400">
-            Upload your resume, choose a role, and select Text or Video mode.
+            Add your resume and the role you’re preparing for, then choose how you’d like to practice.
           </p>
         </div>
       </div>
@@ -122,13 +125,13 @@ export default function NewInterview() {
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-2">
             <Briefcase size={14} className="text-slate-400" />
-            Target Job Role / Stack
+            Role you’re preparing for
           </label>
           <input
             type="text"
             value={jobRole}
             onChange={(e) => setJobRole(e.target.value)}
-            placeholder="e.g. Senior Full-Stack Engineer, Backend Python, Frontend React..."
+            placeholder="e.g. Backend engineer, product designer, data analyst"
             className="w-full px-4 py-3 bg-slate-950/60 border border-slate-800 rounded-2xl text-sm font-semibold text-slate-100 placeholder:text-slate-600 outline-none focus:border-slate-700 shadow-inner transition"
             required
             disabled={isLoading}
@@ -139,7 +142,7 @@ export default function NewInterview() {
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-2">
             <FileUp size={14} className="text-slate-400" />
-            Upload Resume (PDF)
+            Your resume (PDF)
           </label>
 
           <div
@@ -168,12 +171,12 @@ export default function NewInterview() {
               </div>
               <div>
                 <p className="text-sm font-bold text-white">
-                  {file ? file.name : "Click to browse or drop resume PDF"}
+                  {file ? file.name : "Choose a PDF from your device"}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {file
-                    ? `${(file.size / 1024 / 1024).toFixed(2)} MB • Ready for parsing`
-                    : "PDF only (Max 10MB)"}
+                    ? `${(file.size / 1024 / 1024).toFixed(2)} MB · Ready to upload`
+                    : "PDF files only"}
                 </p>
               </div>
             </div>
@@ -183,7 +186,7 @@ export default function NewInterview() {
         {/* Interview Mode Selector */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-            Interview Mode
+            How would you like to practice?
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -208,9 +211,9 @@ export default function NewInterview() {
                 <MessageSquare size={18} />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Text Interview</p>
+                <p className="text-sm font-bold text-white">Text</p>
                 <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                  Type your answers. Best for technical depth and writing practice.
+                  Write your answers and take a little more time to think each one through.
                 </p>
               </div>
             </button>
@@ -236,9 +239,9 @@ export default function NewInterview() {
                 <Video size={18} />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Video Interview</p>
+                <p className="text-sm font-bold text-white">Video</p>
                 <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                  Speak your answers with camera. Closer to a real interview.
+                  Practice speaking your answers with your camera and microphone.
                 </p>
               </div>
             </button>
@@ -254,12 +257,12 @@ export default function NewInterview() {
           {isLoading ? (
             <>
               <Loader2 size={18} className="animate-spin text-slate-300" />
-              Parsing resume & starting session...
+              Getting your interview ready...
             </>
           ) : (
             <>
               <Sparkles size={18} className="text-emerald-400" />
-              Start {mode === "video" ? "Video" : "Text"} Interview
+              Start {mode === "video" ? "video" : "text"} practice
             </>
           )}
         </button>

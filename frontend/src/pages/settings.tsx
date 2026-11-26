@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, User, Bell, Lock, Shield, Cpu, Save, CheckCircle2 } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Shield, Save, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 export default function Settings() {
@@ -9,7 +9,6 @@ export default function Settings() {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [notifications, setNotifications] = useState(true);
-  const [aiModel, setAiModel] = useState('gpt-4o');
   const [saved, setSaved] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -28,17 +27,17 @@ export default function Settings() {
             <div className="w-8 h-8 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-300 shadow-inner">
               <SettingsIcon size={18} />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight">Platform Settings</h1>
+            <h1 className="text-xl font-black text-white tracking-tight">Account settings</h1>
           </div>
           <p className="text-xs font-semibold text-slate-400">
-            Manage your operator profile preferences, security keys, and simulation AI modules.
+            Manage the profile details and preferences for your InterviewPulse account.
           </p>
         </div>
 
         {saved && (
           <div className="flex items-center gap-2 px-3.5 py-2 bg-emerald-950/60 border border-emerald-900/80 rounded-2xl text-emerald-300 text-xs font-bold animate-fade-in shadow-xl">
             <CheckCircle2 size={16} />
-            <span>Changes Saved</span>
+            <span>Changes saved</span>
           </div>
         )}
       </div>
@@ -49,12 +48,12 @@ export default function Settings() {
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-4">
           <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
             <User size={18} className="text-slate-400" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Operator Profile</h2>
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Profile details</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Full Name</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Full name</label>
               <input 
                 type="text" 
                 value={name} 
@@ -63,7 +62,7 @@ export default function Settings() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Email Address</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Email</label>
               <input 
                 type="email" 
                 value={email} 
@@ -82,10 +81,10 @@ export default function Settings() {
           <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
               <Bell size={18} className="text-slate-400" />
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Alerts</h2>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Notifications</h2>
             </div>
             <div className="flex items-center justify-between py-1">
-              <span className="text-xs font-semibold text-slate-300">Pipeline & Session Email Summaries</span>
+              <span className="text-xs font-semibold text-slate-300">Interview email updates</span>
               <input 
                 type="checkbox" 
                 checked={notifications} 
@@ -98,11 +97,11 @@ export default function Settings() {
           <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
               <Shield size={18} className="text-slate-400" />
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Security State</h2>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Account access</h2>
             </div>
             <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-400">Sanctum Token Guard</span>
-              <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-900/60 px-2.5 py-1 rounded-xl">Active & Secured</span>
+              <span className="text-slate-400">Sign-in status</span>
+              <span className="text-emerald-400 bg-emerald-950/40 border border-emerald-900/60 px-2.5 py-1 rounded-xl">Signed in</span>
             </div>
           </div>
 
@@ -115,7 +114,7 @@ export default function Settings() {
             className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-white font-bold rounded-2xl text-sm transition shadow-lg cursor-pointer select-none"
           >
             <Save size={16} />
-            <span>Save Configuration</span>
+            <span>Save changes</span>
           </button>
         </div>
 

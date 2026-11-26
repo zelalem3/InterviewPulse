@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import {
   User,
   Mail,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 
 import { api } from "../api/axios";
-import Navbar from "../components/Navbar";
 import InterviewPulseLogo from "../components/InterviewPulseLogo";
 
 export default function Register() {
@@ -42,24 +42,26 @@ export default function Register() {
       });
 
       navigate("/login", { replace: true });
-    } catch (err: any) {
-      console.error(err.response?.data);
-
-      if (err.response?.status === 422) {
-        const errors = err.response.data?.errors;
-
-        const messages = errors
-          ? Object.values(errors).flat().join("\n")
-          : "Please check your information.";
-
-        setErrorMessage(messages);
+    } catch (error: unknown) {
+      if (isAxiosError<{
+        errors?: Record<string, string | string[]>;
+        message?: string;
+        detail?: string;
+      }>(error)) {
+        if (error.response?.status === 422) {
+          const errors = error.response.data?.errors;
+          setErrorMessage(
+            errors ? Object.values(errors).flat().join("\n") : "Please check your details.",
+          );
+        } else {
+          setErrorMessage(
+            error.response?.data?.message ||
+              error.response?.data?.detail ||
+              "We couldn’t create your account. Please try again.",
+          );
+        }
       } else {
-        const detail =
-          err.response?.data?.message ||
-          err.response?.data?.detail ||
-          "Registration failed. Please try again.";
-
-        setErrorMessage(detail);
+        setErrorMessage("We couldn’t create your account. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -124,12 +126,11 @@ export default function Register() {
             </div>
 
             <h1 className="text-3xl font-black tracking-tight text-white">
-              Create Your Account
+              Create your account
             </h1>
 
             <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-400">
-              Create your InterviewPulse account and start practicing
-              with AI-powered interviews.
+              Set up your account to start practicing for the role you want.
             </p>
           </div>
 
@@ -177,7 +178,7 @@ export default function Register() {
                   text-slate-400
                 "
               >
-                Full Name
+                Your name
               </label>
 
               <div
@@ -201,9 +202,10 @@ export default function Register() {
                 <input
                   id="name"
                   type="text"
+                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder="How should we address you?"
                   className="
                     h-14
                     w-full
@@ -234,7 +236,7 @@ export default function Register() {
                   text-slate-400
                 "
               >
-                Email Address
+                Email
               </label>
 
               <div
@@ -258,9 +260,10 @@ export default function Register() {
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
+                  placeholder="you@example.com"
                   className="
                     h-14
                     w-full
@@ -291,7 +294,7 @@ export default function Register() {
                   text-slate-400
                 "
               >
-                Password
+                Create a password
               </label>
 
               <div
@@ -315,6 +318,7 @@ export default function Register() {
                 <input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -367,11 +371,11 @@ export default function Register() {
                     className="animate-spin"
                   />
 
-                  Creating Account...
+                  Creating account...
                 </>
               ) : (
                 <>
-                  Create Account
+                  Create account
 
                   <ArrowRight
                     size={18}
@@ -382,21 +386,9 @@ export default function Register() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="my-7 flex items-center gap-4">
-            <div className="h-px flex-1 bg-slate-800" />
-
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-              Already registered?
-            </span>
-
-            <div className="h-px flex-1 bg-slate-800" />
-          </div>
-
-          {/* Footer */}
-          <div className="text-center">
+          <div className="mt-7 text-center">
             <p className="text-sm font-medium text-slate-500">
-              Already have an InterviewPulse account?
+              Already have an account?
               <button
                 type="button"
                 onClick={() => navigate("/login")}
